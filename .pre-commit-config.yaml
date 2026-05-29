@@ -1,0 +1,45 @@
+# Install with: pre-commit install --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
+# (or run `make hooks`)
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+
+repos:
+  # Lint + format + type-check on commit.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1
+    hooks:
+      - id: mypy
+        additional_dependencies: []
+
+  # Check Terraform formatting on commit (run `terraform fmt -recursive terraform` to fix).
+  - repo: local
+    hooks:
+      - id: terraform-fmt
+        name: terraform fmt
+        entry: terraform fmt -check -recursive terraform
+        language: system
+        files: \.tf$
+        pass_filenames: false
+
+  # Enforce the commitizen commit-message standard.
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.1.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+  # Run the test suite before pushing (keeps commits fast).
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: uv run pytest
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

@@ -1,0 +1,37 @@
+name: Deploy to prod (manual)
+
+# Manual "button": appears under the Actions tab as "Run workflow". Pick any branch
+# (a PR branch or main) in the UI, or override with the `ref` input below.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref (branch / tag / SHA) to deploy. Defaults to the branch the run was started on."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write  # for AWS OIDC (configure-aws-credentials)
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+      # Set the `prod` environment variables AWS_ROLE_ARN, AWS_REGION and
+      # TF_STATE_BUCKET (the bucket printed by scripts/create-bucket-for-tfstate-in-aws.sh).
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v3
+      - name: Terraform apply (prod)
+        run: |
+          terraform -chdir=terraform/prod init -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          terraform -chdir=terraform/prod apply -auto-approve -input=false
