@@ -22,7 +22,7 @@ echo
 read -r -p "AWS_ROLE_ARN (IAM role assumed via OIDC): " AWS_ROLE_ARN
 read -r -p "AWS_REGION [eu-west-1]: " AWS_REGION
 AWS_REGION="${AWS_REGION:-eu-west-1}"
-read -r -p "TF_STATE_BUCKET (from scripts/create-bucket-for-tfstate-in-aws.sh): " TF_STATE_BUCKET
+read -r -p "TF_STATE_BUCKET (from scripts/create-tfstate-bucket-in-aws.sh): " TF_STATE_BUCKET
 
 if [ -z "$AWS_ROLE_ARN" ] || [ -z "$TF_STATE_BUCKET" ]; then
   echo "Error: AWS_ROLE_ARN and TF_STATE_BUCKET must not be empty." >&2

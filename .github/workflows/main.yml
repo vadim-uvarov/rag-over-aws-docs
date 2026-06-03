@@ -66,7 +66,7 @@ jobs:
         with:
           ref: main
       # Set the `prod` environment variables AWS_ROLE_ARN, AWS_REGION and
-      # TF_STATE_BUCKET (the bucket printed by scripts/create-bucket-for-tfstate-in-aws.sh).
+      # TF_STATE_BUCKET (the bucket printed by scripts/create-tfstate-bucket-in-aws.sh).
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
