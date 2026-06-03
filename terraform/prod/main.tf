@@ -8,7 +8,7 @@ terraform {
   # account ID, so it is supplied at init time rather than hardcoded here:
   #   terraform -chdir=terraform/prod init \
   #     -backend-config="bucket=<project>-tfstate-<account_id>"
-  # Run scripts/create-bucket-for-tfstate-in-aws.sh once per account to create the bucket.
+  # Run scripts/create-tfstate-bucket-in-aws.sh once per account to create the bucket.
   backend "s3" {
     key          = "prod/terraform.tfstate"
     region       = "eu-west-1"

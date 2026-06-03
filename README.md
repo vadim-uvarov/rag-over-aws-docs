@@ -40,10 +40,10 @@ request whose pipeline passes and whose conversations are all resolved.
 The `prod` stack uses an S3 backend with S3-native locking. The bucket name embeds the AWS
 account ID, so it is passed at `terraform init` time rather than hardcoded.
 
-1. Create the state bucket once per AWS account: `./scripts/create-bucket-for-tfstate-in-aws.sh`
+1. Create the state bucket once per AWS account: `./scripts/create-tfstate-bucket-in-aws.sh`
    (it prints the bucket name).
 2. Create the GitHub OIDC provider and the deploy IAM role:
-   `./scripts/setup-aim-oidc-and-aim-role-for-cicd-in-aws.sh` (it prints the role ARN).
+   `./scripts/setup-cicd-permissions-in-aws.sh` (it prints the role ARN).
 3. Set the deploy variables on the `prod` GitHub Environment — run
    `./scripts/setup-deploy-vars-in-github.sh` (uses the `gh` CLI and prompts for each value), or set
    them manually:
