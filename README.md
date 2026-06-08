@@ -37,6 +37,7 @@ incrementally per [`.claude/initial-plan.md`](.claude/initial-plan.md).
 
 - [`docs/architecture.md`](docs/architecture.md) — data flow, S3 layout, decisions
 - [`docs/ingestion.md`](docs/ingestion.md) — mirroring AWS docs into the corpus bucket
+- [`docs/etl.md`](docs/etl.md) — chunk → embed → index stages and interfaces
 
 
 ## Local dev and deploy instructions
