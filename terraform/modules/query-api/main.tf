@@ -60,6 +60,10 @@ resource "aws_lambda_function" "query" {
     command = ["rag_aws.query.handler.handler"]
   }
 
+  tracing_config {
+    mode = "Active"
+  }
+
   environment {
     variables = {
       PROJECT_BUCKET_NAME  = var.bucket_name
@@ -127,10 +131,11 @@ resource "aws_api_gateway_deployment" "this" {
 }
 
 resource "aws_api_gateway_stage" "this" {
-  rest_api_id   = aws_api_gateway_rest_api.api.id
-  deployment_id = aws_api_gateway_deployment.this.id
-  stage_name    = var.stage_name
-  tags          = var.tags
+  rest_api_id          = aws_api_gateway_rest_api.api.id
+  deployment_id        = aws_api_gateway_deployment.this.id
+  stage_name           = var.stage_name
+  xray_tracing_enabled = true
+  tags                 = var.tags
 }
 
 resource "aws_api_gateway_method_settings" "throttle" {

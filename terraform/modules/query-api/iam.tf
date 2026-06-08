@@ -62,3 +62,8 @@ resource "aws_iam_role_policy_attachment" "query_logs" {
   role       = aws_iam_role.query.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
+
+resource "aws_iam_role_policy_attachment" "query_xray" {
+  role       = aws_iam_role.query.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}

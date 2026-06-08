@@ -91,3 +91,24 @@ module "query_api" {
   lambda_image_uri = var.query_lambda_image_uri
   tags             = local.common_tags
 }
+
+# Dashboards + alarms. Requires enable_etl and enable_query_api (it monitors
+# their resources). Disabled by default.
+module "monitoring" {
+  source = "../modules/monitoring"
+  count  = var.enable_monitoring ? 1 : 0
+
+  name_prefix         = local.name_prefix
+  aws_region          = var.aws_region
+  alarm_email         = var.alarm_email
+  state_machine_arn   = module.etl[0].state_machine_arn
+  dlq_name            = module.etl[0].dlq_name
+  api_name            = module.query_api[0].api_name
+  query_function_name = module.query_api[0].query_function_name
+  lambda_function_names = [
+    module.etl[0].process_function_name,
+    module.etl[0].dispatch_function_name,
+    module.query_api[0].query_function_name,
+  ]
+  tags = local.common_tags
+}

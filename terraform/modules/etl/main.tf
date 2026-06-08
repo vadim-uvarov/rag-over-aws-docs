@@ -93,6 +93,10 @@ resource "aws_lambda_function" "process" {
     command = ["rag_aws.etl.handlers.process.handler"]
   }
 
+  tracing_config {
+    mode = "Active"
+  }
+
   environment {
     variables = {
       PROJECT_BUCKET_NAME = var.bucket_name
@@ -119,6 +123,10 @@ resource "aws_lambda_function" "dispatch" {
 
   image_config {
     command = ["rag_aws.etl.handlers.dispatch.handler"]
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 
   environment {

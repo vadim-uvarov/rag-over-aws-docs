@@ -58,6 +58,11 @@ resource "aws_iam_role_policy_attachment" "process_logs" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+resource "aws_iam_role_policy_attachment" "process_xray" {
+  role       = aws_iam_role.process.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}
+
 # --- Dispatch Lambda role: read SQS, start executions ----------------------
 
 resource "aws_iam_role" "dispatch" {
@@ -88,6 +93,11 @@ resource "aws_iam_role_policy" "dispatch" {
 resource "aws_iam_role_policy_attachment" "dispatch_logs" {
   role       = aws_iam_role.dispatch.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "dispatch_xray" {
+  role       = aws_iam_role.dispatch.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
 }
 
 # --- Step Functions role: invoke the process Lambda ------------------------

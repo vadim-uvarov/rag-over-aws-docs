@@ -38,6 +38,16 @@ output "frontend_domain_name" {
   value       = try(module.frontend[0].distribution_domain_name, null)
 }
 
+output "alerts_topic_arn" {
+  description = "Alerts SNS topic ARN (null when monitoring is disabled)."
+  value       = try(module.monitoring[0].alerts_topic_arn, null)
+}
+
+output "dashboard_name" {
+  description = "CloudWatch dashboard name (null when monitoring is disabled)."
+  value       = try(module.monitoring[0].dashboard_name, null)
+}
+
 output "sessions_table_name" {
   description = "Session-quota DynamoDB table name (null when the query API is disabled)."
   value       = try(module.query_api[0].sessions_table_name, null)
