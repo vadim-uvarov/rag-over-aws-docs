@@ -1,6 +1,3 @@
-# Placeholder prod stack. It provisions nothing yet — `terraform apply` just prints a
-# message. Replace the null_resource with real infrastructure as the project grows.
-
 terraform {
   required_version = ">= 1.5"
 
@@ -14,20 +11,40 @@ terraform {
   }
 
   required_providers {
-    null = {
-      source  = "hashicorp/null"
-      version = ">= 3.2"
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
     }
   }
 }
 
-resource "null_resource" "deploy_message" {
-  provisioner "local-exec" {
-    command = "echo 'Deploying rag-over-aws-docs to PROD (placeholder — nothing provisioned yet).'"
+provider "aws" {
+  region = var.aws_region
+
+  default_tags {
+    tags = local.common_tags
+  }
+}
+
+# The deploying account; used to make the project bucket name globally unique.
+data "aws_caller_identity" "current" {}
+
+locals {
+  project     = "rag-over-aws-docs"
+  environment = "prod"
+
+  common_tags = {
+    Project     = local.project
+    Environment = local.environment
+    ManagedBy   = "terraform"
   }
 
-  # Re-run the message on every apply.
-  triggers = {
-    always_run = timestamp()
-  }
+  bucket_name = "${local.project}-${local.environment}-${data.aws_caller_identity.current.account_id}"
+}
+
+module "storage" {
+  source = "../modules/storage"
+
+  bucket_name = local.bucket_name
+  tags        = local.common_tags
 }
