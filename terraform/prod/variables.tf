@@ -45,3 +45,27 @@ variable "query_lambda_image_uri" {
   type        = string
   default     = ""
 }
+
+variable "enable_scheduled_ingestion" {
+  description = "Provision scheduled Fargate corpus ingestion (requires an ECR image)."
+  type        = bool
+  default     = false
+}
+
+variable "ingestion_image_uri" {
+  description = "ECR image URI for the ingestion container."
+  type        = string
+  default     = ""
+}
+
+variable "ingestion_subnet_ids" {
+  description = "Subnets for the ingestion Fargate task."
+  type        = list(string)
+  default     = []
+}
+
+variable "ingestion_security_group_ids" {
+  description = "Security groups for the ingestion Fargate task."
+  type        = list(string)
+  default     = []
+}

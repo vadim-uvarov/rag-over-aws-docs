@@ -112,3 +112,20 @@ module "monitoring" {
   ]
   tags = local.common_tags
 }
+
+# Scheduled corpus ingestion on Fargate. Disabled until the ingestion image is
+# in ECR and networking is supplied.
+module "scheduled_ingestion" {
+  source = "../modules/scheduled-ingestion"
+  count  = var.enable_scheduled_ingestion ? 1 : 0
+
+  name_prefix        = local.name_prefix
+  aws_region         = var.aws_region
+  bucket_name        = module.storage.bucket_id
+  bucket_arn         = module.storage.bucket_arn
+  kms_key_arn        = module.storage.kms_key_arn
+  image_uri          = var.ingestion_image_uri
+  subnet_ids         = var.ingestion_subnet_ids
+  security_group_ids = var.ingestion_security_group_ids
+  tags               = local.common_tags
+}

@@ -52,3 +52,8 @@ output "sessions_table_name" {
   description = "Session-quota DynamoDB table name (null when the query API is disabled)."
   value       = try(module.query_api[0].sessions_table_name, null)
 }
+
+output "ingestion_schedule_name" {
+  description = "Scheduled-ingestion schedule name (null when disabled)."
+  value       = try(module.scheduled_ingestion[0].schedule_name, null)
+}
