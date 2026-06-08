@@ -33,6 +33,12 @@ single-bucket prefix layout, and key technology decisions. The project is built
 incrementally per [`.claude/initial-plan.md`](.claude/initial-plan.md).
 
 
+## Documentation
+
+- [`docs/architecture.md`](docs/architecture.md) — data flow, S3 layout, decisions
+- [`docs/ingestion.md`](docs/ingestion.md) — mirroring AWS docs into the corpus bucket
+
+
 ## Local dev and deploy instructions
 
 ### Local dev
