@@ -34,6 +34,16 @@ jobs:
       - run: uv sync
       - run: uv run pytest
 
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build frontend
+        run: npm --prefix frontend run build
+
   commitizen-check:
     runs-on: ubuntu-latest
     steps:
@@ -55,7 +65,7 @@ jobs:
           fi
 
   deploy-prod:
-    needs: [lint, test, commitizen-check]
+    needs: [lint, test, frontend, commitizen-check]
     runs-on: ubuntu-latest
     environment: prod
     permissions:

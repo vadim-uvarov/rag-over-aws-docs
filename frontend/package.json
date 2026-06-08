@@ -1,0 +1,9 @@
+{
+  "name": "rag-over-aws-docs-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Frontend SPA for rag-over-aws-docs (scaffolded in PR1, built out in PR6).",
+  "scripts": {
+    "build": "node -e \"console.log('frontend build stub — replaced by the Vite SPA in PR6')\""
+  }
+}
