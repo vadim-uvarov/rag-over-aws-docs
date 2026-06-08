@@ -8,6 +8,10 @@ authors = [{ name = "Vadim Uvarov" }]
 license = "MIT"
 dependencies = [
     "boto3>=1.43.24",
+    "lancedb>=0.33.0 ; platform_machine == 'arm64' or sys_platform != 'darwin'",
+    "llama-index-core>=0.14.22",
+    "pyarrow>=24.0.0",
+    "tiktoken>=0.13.0",
 ]
 
 [dependency-groups]
@@ -53,6 +57,12 @@ show_error_codes = true
 explicit_package_bases = true
 mypy_path = "backend/src"
 files = ["backend/src", "tests"]
+
+# These third-party libs ship no type information (and LanceDB has no wheel on
+# every dev platform). Treat their imports as untyped rather than failing.
+[[tool.mypy.overrides]]
+module = ["lancedb.*", "pyarrow.*", "llama_index.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
