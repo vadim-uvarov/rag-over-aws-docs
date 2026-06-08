@@ -39,7 +39,8 @@ locals {
     ManagedBy   = "terraform"
   }
 
-  bucket_name = "${local.project}-${local.environment}-${data.aws_caller_identity.current.account_id}"
+  name_prefix = "${local.project}-${local.environment}"
+  bucket_name = "${local.name_prefix}-${data.aws_caller_identity.current.account_id}"
 }
 
 module "storage" {
@@ -47,4 +48,19 @@ module "storage" {
 
   bucket_name = local.bucket_name
   tags        = local.common_tags
+}
+
+# ETL orchestration. Disabled until the Lambda container image exists in ECR
+# (set enable_etl=true and etl_lambda_image_uri after building backend/Dockerfile).
+module "etl" {
+  source = "../modules/etl"
+  count  = var.enable_etl ? 1 : 0
+
+  name_prefix      = local.name_prefix
+  aws_region       = var.aws_region
+  bucket_name      = module.storage.bucket_id
+  bucket_arn       = module.storage.bucket_arn
+  kms_key_arn      = module.storage.kms_key_arn
+  lambda_image_uri = var.etl_lambda_image_uri
+  tags             = local.common_tags
 }
