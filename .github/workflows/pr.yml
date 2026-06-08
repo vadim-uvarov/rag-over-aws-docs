@@ -1,8 +1,9 @@
 name: PR checks
 
+# Run on PRs into any branch so stacked PRs (each targeting the previous one)
+# are also checked, not only PRs into main.
 on:
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
