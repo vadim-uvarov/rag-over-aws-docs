@@ -69,13 +69,52 @@ process_document(
 )
 ```
 
+## Orchestration (PR4)
+
+Automated, batched, resilient processing of changed files
+(`terraform/modules/etl`):
+
+```
+S3 corpus/raw/ ─(EventBridge: Object Created/Deleted)─► SQS ingest (+ DLQ)
+                                                          │ batch
+                                     Lambda dispatch ◄────┘
+                                          │ StartExecution({"items":[…]})
+                                          ▼
+                       Step Functions: Map(items) ─► Lambda process
+                                                       (chunk → embed → index)
+```
+
+- **`handlers/events.py`** normalizes EventBridge S3 events into
+  `DocumentEvent(bucket, key, action)`.
+- **`handlers/dispatch.py`** (SQS-triggered) batches records into the Map input
+  and starts one execution.
+- **`handlers/process.py`** runs once per Map item: a created/updated key is
+  chunked→embedded→indexed (chunk text also written to B); a removed key has its
+  vectors and chunk objects deleted.
+- The **Map** state bounds `MaxConcurrency` (Bedrock throttling control), retries
+  each task with backoff, and tolerates a small failure percentage; the **DLQ**
+  captures messages that fail repeatedly. (Failure alarms land in PR7.)
+- Both Lambdas run from one **container image** (`backend/Dockerfile`); the ETL
+  module is gated behind `enable_etl` until that image is pushed to ECR.
+
+### Backfill
+
+`scripts/backfill.py --bucket <b> --queue-url <url>` enqueues an
+`Object Created` event for every object under `corpus/raw/` onto the same SQS
+buffer (batches of 10, optional `--delay`), so the initial bulk load flows
+through the identical pipeline without thousands of concurrent executions.
+
 ## Tests
 
 - **Unit** — per stage with fakes: token counting, chunk boundaries/metadata
   (empty/tiny/large border cases), chunk→S3 keys, fake-embedder determinism,
   Bedrock retry/backoff (throttle→retry, non-retryable, exhaustion), in-memory
-  index upsert/search/delete.
+  index upsert/search/delete; handler event parsing, dispatcher batching, the
+  process handler (create→indexed, remove→deleted), and backfill enqueue/batching.
 - **Contract** (`tests/contract/`) — the same assertions run against *every*
   implementation of `VectorIndex` and `Embedder`.
-- **Integration** (`tests/integration/test_etl_pipeline.py`) — chunk→embed→index
-  on a sample doc with moto S3 and a local index (LanceDB where available).
+- **Integration** — chunk→embed→index on a sample doc with moto S3
+  (`test_etl_pipeline.py`); and the full EventBridge→SQS→dispatch→Map(process)
+  flow simulated against moto (`test_etl_orchestration.py`). Step Functions Local
+  needs Java/Docker, so the orchestration test drives the same handler functions
+  the Map state invokes rather than the real state machine.
