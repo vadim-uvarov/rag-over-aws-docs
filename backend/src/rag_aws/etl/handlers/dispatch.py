@@ -14,8 +14,10 @@ from typing import Any, Protocol, cast
 import boto3
 
 from rag_aws.etl.handlers.events import parse_eventbridge_event
+from rag_aws.observability import get_logger
 
 STATE_MACHINE_ARN_ENV = "STATE_MACHINE_ARN"
+_logger = get_logger(__name__)
 
 
 class StepFunctionsClient(Protocol):
@@ -63,4 +65,8 @@ def handler(event: dict[str, Any], _context: object = None) -> dict[str, str]:
     state_machine_arn = os.environ[STATE_MACHINE_ARN_ENV]
     sfn_client = cast(StepFunctionsClient, boto3.client("stepfunctions"))
     execution_arn = dispatch(event, sfn_client=sfn_client, state_machine_arn=state_machine_arn)
+    _logger.info(
+        "dispatched batch",
+        extra={"records": len(event.get("Records", [])), "executionArn": execution_arn},
+    )
     return {"executionArn": execution_arn}

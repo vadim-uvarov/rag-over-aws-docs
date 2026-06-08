@@ -16,6 +16,7 @@ from uuid import uuid4
 
 from rag_aws.config.settings import VECTOR_STORE_PREFIX, load_settings
 from rag_aws.etl.interfaces import SearchResult
+from rag_aws.observability import get_logger
 from rag_aws.query.generator import AnswerGenerator
 from rag_aws.query.links import build_doc_link
 from rag_aws.query.retriever import Retriever
@@ -24,6 +25,8 @@ from rag_aws.query.tracing import LangfuseKeys, load_langfuse_keys, record_query
 
 if TYPE_CHECKING:
     from rag_aws.etl.embedding.bedrock import InvokeModelClient
+
+_logger = get_logger(__name__)
 
 SESSION_TABLE_ENV = "SESSION_TABLE_NAME"
 LANGFUSE_SECRET_ENV = "LANGFUSE_SECRET_NAME"
@@ -103,6 +106,7 @@ def handler(event: dict[str, Any], _context: object = None) -> dict[str, Any]:
         return _http_response(400, {"error": "request body must be valid JSON"})
 
     status, payload = process_query(body, _build_dependencies())
+    _logger.info("handled /ask", extra={"status": status, "chunks": len(payload.get("chunks", []))})
     return _http_response(status, payload)
 
 
