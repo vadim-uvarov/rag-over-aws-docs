@@ -15,3 +15,15 @@ variable "etl_lambda_image_uri" {
   type        = string
   default     = ""
 }
+
+variable "enable_query_api" {
+  description = "Provision the RAG query API module (requires a built Lambda image)."
+  type        = bool
+  default     = false
+}
+
+variable "query_lambda_image_uri" {
+  description = "ECR image URI for the query Lambda (required when enable_query_api=true)."
+  type        = string
+  default     = ""
+}

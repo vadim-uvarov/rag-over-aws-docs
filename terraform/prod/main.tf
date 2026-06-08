@@ -64,3 +64,17 @@ module "etl" {
   lambda_image_uri = var.etl_lambda_image_uri
   tags             = local.common_tags
 }
+
+# RAG query API. Disabled until the Lambda container image exists in ECR.
+module "query_api" {
+  source = "../modules/query-api"
+  count  = var.enable_query_api ? 1 : 0
+
+  name_prefix      = local.name_prefix
+  aws_region       = var.aws_region
+  bucket_name      = module.storage.bucket_id
+  bucket_arn       = module.storage.bucket_arn
+  kms_key_arn      = module.storage.kms_key_arn
+  lambda_image_uri = var.query_lambda_image_uri
+  tags             = local.common_tags
+}
