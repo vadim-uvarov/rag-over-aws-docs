@@ -1,0 +1,149 @@
+"""API Lambda: synchronous ``/ask`` endpoint returning an answer + ranked chunks.
+
+The core (:func:`process_query`) is pure orchestration over injected
+dependencies so it is fully testable; :func:`handler` parses the API Gateway
+event, builds the real backends, and maps the result to an HTTP response.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Protocol, cast
+from uuid import uuid4
+
+from rag_aws.config.settings import VECTOR_STORE_PREFIX, load_settings
+from rag_aws.etl.interfaces import SearchResult
+from rag_aws.query.generator import AnswerGenerator
+from rag_aws.query.links import build_doc_link
+from rag_aws.query.retriever import Retriever
+from rag_aws.query.session import SessionUsage
+from rag_aws.query.tracing import LangfuseKeys, load_langfuse_keys, record_query_trace
+
+if TYPE_CHECKING:
+    from rag_aws.etl.embedding.bedrock import InvokeModelClient
+
+SESSION_TABLE_ENV = "SESSION_TABLE_NAME"
+LANGFUSE_SECRET_ENV = "LANGFUSE_SECRET_NAME"
+BUCKET_ENV = "PROJECT_BUCKET_NAME"
+
+
+class QuotaRecorder(Protocol):
+    """Records a question against a session and reports usage."""
+
+    def record_question(self, session_id: str, now: float | None = None) -> SessionUsage: ...
+
+
+@dataclass
+class QueryDependencies:
+    """Everything :func:`process_query` needs, injected for testability."""
+
+    retriever: Retriever
+    generator: AnswerGenerator
+    quota: QuotaRecorder
+    langfuse_keys: LangfuseKeys | None = None
+
+
+def shape_chunks(hits: Sequence[SearchResult]) -> list[dict[str, Any]]:
+    """Render hits (already ordered by descending relevance) for the response."""
+    return [
+        {
+            "source_doc": hit.source_doc,
+            "link": build_doc_link(hit.repo, hit.source_doc),
+            "cosine_distance": round(1.0 - hit.score, 6),
+        }
+        for hit in hits
+    ]
+
+
+def _session_view(usage: SessionUsage) -> dict[str, Any]:
+    return {"id": usage.session_id, "used": usage.used, "limit": usage.limit}
+
+
+def process_query(body: dict[str, Any], deps: QueryDependencies) -> tuple[int, dict[str, Any]]:
+    """Run one query end-to-end; return an ``(http_status, payload)`` pair."""
+    question = str(body.get("question") or "").strip()
+    if not question:
+        return 400, {"error": "'question' is required"}
+
+    session_id = str(body.get("session_id") or "").strip() or uuid4().hex
+    usage = deps.quota.record_question(session_id)
+    if not usage.allowed:
+        return 429, {"error": "session question limit reached", "session": _session_view(usage)}
+
+    hits = deps.retriever.retrieve(question)
+    answer = deps.generator.generate_answer(question, hits)
+    record_query_trace(deps.langfuse_keys, question=question, chunks=hits, answer=answer)
+
+    return 200, {
+        "answer": answer,
+        "chunks": shape_chunks(hits),
+        "session": _session_view(usage),
+    }
+
+
+def _http_response(status: int, payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "statusCode": status,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+        },
+        "body": json.dumps(payload),
+    }
+
+
+def handler(event: dict[str, Any], _context: object = None) -> dict[str, Any]:
+    """Lambda entry point for API Gateway proxy integration."""
+    try:
+        body = json.loads(event.get("body") or "{}")
+    except json.JSONDecodeError:
+        return _http_response(400, {"error": "request body must be valid JSON"})
+
+    status, payload = process_query(body, _build_dependencies())
+    return _http_response(status, payload)
+
+
+def _build_dependencies() -> QueryDependencies:
+    """Construct the real Bedrock / LanceDB / DynamoDB / Secrets backends."""
+    import boto3
+
+    from rag_aws.etl.embedding.bedrock import BedrockTitanEmbedder
+    from rag_aws.etl.indexing.lancedb_index import LanceDBIndex
+    from rag_aws.query.generator import NovaMicroModel
+    from rag_aws.query.session import SessionQuota
+
+    settings = load_settings()
+    bucket = os.environ.get(BUCKET_ENV, settings.bucket_name)
+    region = settings.aws_region
+
+    bedrock_client = cast("InvokeModelClient", boto3.client("bedrock-runtime", region_name=region))
+    embedder = BedrockTitanEmbedder(bedrock_client, model_id=settings.embed_model_id)
+    index = LanceDBIndex(
+        uri=f"s3://{bucket}/{VECTOR_STORE_PREFIX}", dimensions=settings.embedding_dimensions
+    )
+    retriever = Retriever(embedder, index, settings=settings)
+
+    generator = AnswerGenerator(
+        NovaMicroModel(model_id=settings.generation_model_id, region_name=region)
+    )
+
+    quota = SessionQuota(
+        boto3.client("dynamodb", region_name=region),
+        table_name=os.environ[SESSION_TABLE_ENV],
+        limit=settings.session_question_limit,
+        ttl_hours=settings.session_ttl_hours,
+    )
+
+    langfuse_keys = None
+    secret_name = os.environ.get(LANGFUSE_SECRET_ENV)
+    if secret_name:
+        langfuse_keys = load_langfuse_keys(
+            boto3.client("secretsmanager", region_name=region), secret_name
+        )
+
+    return QueryDependencies(
+        retriever=retriever, generator=generator, quota=quota, langfuse_keys=langfuse_keys
+    )
