@@ -20,7 +20,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-src = ["backend", "tests"]
+src = ["backend/src", "tests"]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -47,12 +47,12 @@ python_version = "3.13"
 strict = true
 show_error_codes = true
 explicit_package_bases = true
-mypy_path = "backend"
-files = ["backend", "tests"]
+mypy_path = "backend/src"
+files = ["backend/src", "tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["backend"]
+pythonpath = ["backend/src"]
 addopts = "-ra"
 
 [tool.commitizen]
