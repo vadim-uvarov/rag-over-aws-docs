@@ -5,12 +5,31 @@ This project is a web app that allows you to chat with AI agent about AWS docume
 
 ## Project layout
 
-TODO
+```
+backend/src/rag_aws/   # Python backend package (config in PR1; ETL/query later)
+  config/              # central settings, Bedrock model ids, timestamp helper
+tests/
+  unit/  integration/  # pytest suites
+frontend/              # React SPA (build stub in PR1, full app in PR6)
+terraform/
+  modules/storage/     # project S3 bucket + KMS key
+  prod/                # root stack composition (S3 remote state, OIDC deploy)
+scripts/               # GitHub repo, AWS state bucket, and CI/CD setup helpers
+docs/                  # architecture.md and per-component docs
+```
 
 
 ## Project architecture
 
-TODO
+A user asks a question in the SPA; an API Lambda embeds the query, retrieves the
+most similar documentation chunks from a LanceDB vector store on S3, and has a
+Bedrock model generate a grounded answer. Documentation is ingested from the
+`awsdocs` GitHub repos into S3 and processed (chunk → embed → index) by an
+event-driven ETL pipeline.
+
+See [`docs/architecture.md`](docs/architecture.md) for the full data flow, the
+single-bucket prefix layout, and key technology decisions. The project is built
+incrementally per [`.claude/initial-plan.md`](.claude/initial-plan.md).
 
 
 ## Local dev and deploy instructions
