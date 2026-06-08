@@ -88,3 +88,22 @@ Adding a repo only uploads its new files (the diff handles the rest).
 | `ingestion/manifest.py` | Manifest model + S3 read/write |
 | `ingestion/sync.py` | Pure diff planner + top-level `sync_corpus` |
 | `scripts/ingest_corpus.py` | CLI entry point |
+
+## Scheduled ingestion (PR8)
+
+Instead of running locally, the same script can run on a schedule on AWS:
+
+```
+EventBridge Scheduler ──► ECS Fargate task (backend/ingestion.Dockerfile)
+                            └─ incremental sync → corpus/raw/ → existing ETL trigger
+```
+
+`terraform/modules/scheduled-ingestion` provisions the ECS cluster, the Fargate
+task definition (least-privilege task role), the schedule (default
+`rate(24 hours)`), and a failed-run SNS alert. The container just runs
+`scripts/ingest_corpus.py` with `PROJECT_BUCKET_NAME` set, so the incremental
+manifest logic is identical to a local run — only added/changed files are
+uploaded and deletions removed, which the ETL pipeline (PR4) consumes.
+
+Gated behind `enable_scheduled_ingestion`; provide `ingestion_image_uri`,
+`ingestion_subnet_ids`, and `ingestion_security_group_ids`.
