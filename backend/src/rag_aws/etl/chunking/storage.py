@@ -39,3 +39,13 @@ def write_chunks_to_s3(s3_client: S3Client, bucket: str, chunks: Sequence[Chunk]
         )
         keys.append(key)
     return keys
+
+
+def delete_document_chunks(s3_client: S3Client, bucket: str, repo: str, source_doc: str) -> int:
+    """Delete all chunk objects (B) for one source document; return the count."""
+    prefix = chunk_key(repo, source_doc, 0).rsplit("/", 1)[0] + "/"
+    response = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+    keys = [obj["Key"] for obj in response.get("Contents", [])]
+    for key in keys:
+        s3_client.delete_object(Bucket=bucket, Key=key)
+    return len(keys)

@@ -23,3 +23,26 @@ def map_to_raw_key(repo_name: str, relative_path: str) -> str:
     normalised = PurePosixPath(relative_path.replace("\\", "/"))
     parts = [part for part in normalised.parts if part not in ("", ".", "/")]
     return f"{RAW_PREFIX}{repo_name}/{'/'.join(parts)}"
+
+
+def parse_raw_key(key: str) -> tuple[str, str]:
+    """Split a ``corpus/raw/`` object key back into ``(repo, source_doc)``.
+
+    Inverse of :func:`map_to_raw_key`.
+
+    Args:
+        key: An S3 key under ``corpus/raw/``.
+
+    Returns:
+        The repo name (first path segment) and the document path relative to it.
+
+    Raises:
+        ValueError: If ``key`` is not under ``corpus/raw/`` or has no document path.
+    """
+    if not key.startswith(RAW_PREFIX):
+        raise ValueError(f"Key {key!r} is not under {RAW_PREFIX!r}")
+    remainder = key[len(RAW_PREFIX) :]
+    repo, separator, source_doc = remainder.partition("/")
+    if not separator or not source_doc:
+        raise ValueError(f"Key {key!r} has no <repo>/<doc> structure")
+    return repo, source_doc
