@@ -35,6 +35,9 @@ fi
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 PROVIDER_ARN="arn:aws:iam::${ACCOUNT_ID}:oidc-provider/${OIDC_HOST}"
 BUCKET="rag-over-aws-docs-tfstate-${ACCOUNT_ID}"
+# The project bucket Terraform creates/manages (see terraform/prod/main.tf). Must
+# stay in sync with the bucket_name local there: project-environment-accountid.
+PROJECT_BUCKET="rag-over-aws-docs-${ENVIRONMENT}-${ACCOUNT_ID}"
 
 echo "Account:     $ACCOUNT_ID"
 echo "Repository:  $REPO"
@@ -87,8 +90,18 @@ else
   echo "Created role: $ROLE_NAME"
 fi
 
-# Permissions: access to the Terraform state bucket (init/plan/apply + S3-native
-# locking). Add further statements for the infrastructure you actually deploy.
+# Permissions, in three groups:
+#   1. Terraform state bucket (init/plan/apply + S3-native locking).
+#   2. The project S3 bucket Terraform creates and manages. Terraform reads back
+#      every bucket sub-resource (versioning, encryption, lifecycle, public
+#      access block, tagging, ...) on each apply, so the role needs the matching
+#      Get*/Put* actions, not just CreateBucket. s3:*Bucket* covers them and any
+#      bucket settings added by future modules without re-editing this policy.
+#   3. The customer-managed KMS key that encrypts the project bucket. CreateKey
+#      and ListAliases cannot be scoped to a key ARN (the key/aliases are not
+#      addressable at create time), so KMS actions use Resource "*"; access to
+#      existing keys is still gated by each key's own key policy.
+# Add further statements for any new infrastructure you deploy.
 PERMISSIONS_POLICY="$(mktemp)"
 cat >"$PERMISSIONS_POLICY" <<JSON
 {
@@ -105,6 +118,53 @@ cat >"$PERMISSIONS_POLICY" <<JSON
       "Effect": "Allow",
       "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
       "Resource": "arn:aws:s3:::${BUCKET}/*"
+    },
+    {
+      "Sid": "ProjectBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:ListBucket",
+        "s3:GetBucket*",
+        "s3:PutBucket*",
+        "s3:GetEncryptionConfiguration",
+        "s3:PutEncryptionConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "s3:PutLifecycleConfiguration",
+        "s3:GetAccelerateConfiguration",
+        "s3:GetReplicationConfiguration",
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::${PROJECT_BUCKET}",
+        "arn:aws:s3:::${PROJECT_BUCKET}/*"
+      ]
+    },
+    {
+      "Sid": "ProjectBucketKmsKey",
+      "Effect": "Allow",
+      "Action": [
+        "kms:CreateKey",
+        "kms:DescribeKey",
+        "kms:ListAliases",
+        "kms:CreateAlias",
+        "kms:DeleteAlias",
+        "kms:UpdateAlias",
+        "kms:GetKeyPolicy",
+        "kms:PutKeyPolicy",
+        "kms:GetKeyRotationStatus",
+        "kms:EnableKeyRotation",
+        "kms:DisableKeyRotation",
+        "kms:ListResourceTags",
+        "kms:TagResource",
+        "kms:UntagResource",
+        "kms:ScheduleKeyDeletion",
+        "kms:CancelKeyDeletion"
+      ],
+      "Resource": "*"
     }
   ]
 }
