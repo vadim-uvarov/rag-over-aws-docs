@@ -46,7 +46,25 @@ jobs:
           enable-cache: true
       - run: uv sync
       - name: Check commit messages
-        run: uv run cz check --rev-range origin/${{ github.base_ref }}..HEAD
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # Resolve a base revision to diff this branch against. Normally that is
+          # the PR base branch, but a stacked PR whose base was merged and then
+          # deleted (or a re-run of a stale event) can point at a branch that no
+          # longer exists on origin. Fall back to the base SHA recorded on the PR
+          # event, and finally to the latest commit so the check never crashes on
+          # a missing revision.
+          if git rev-parse --verify --quiet "origin/$BASE_REF" >/dev/null; then
+            range="origin/$BASE_REF..HEAD"
+          elif git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            range="$BASE_SHA..HEAD"
+          else
+            range="HEAD~1..HEAD"
+          fi
+          echo "Checking commit messages in range: $range"
+          uv run cz check --rev-range "$range"
 
   terraform:
     runs-on: ubuntu-latest
