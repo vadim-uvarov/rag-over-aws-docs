@@ -76,8 +76,9 @@ tests/
 frontend/              # React SPA (stub in PR1, built in PR6)
 terraform/
   modules/storage/     # project S3 bucket + KMS
-  prod/                # root stack composition (S3 backend, OIDC deploy)
-scripts/               # repo + AWS + CI/CD setup helpers
+  bootstrap/           # CI/CD identity: GitHub OIDC provider + deploy role
+  prod/                # root stack composition (S3 backend, project bucket)
+scripts/               # repo + AWS state bucket + deploy-vars setup helpers
 docs/                  # architecture and per-component docs
 ```
 

@@ -13,8 +13,9 @@ tests/
 frontend/              # React SPA (build stub in PR1, full app in PR6)
 terraform/
   modules/storage/     # project S3 bucket + KMS key
-  prod/                # root stack composition (S3 remote state, OIDC deploy)
-scripts/               # GitHub repo, AWS state bucket, and CI/CD setup helpers
+  bootstrap/           # one-time CI/CD identity: GitHub OIDC provider + deploy role
+  prod/                # root stack composition (S3 remote state, project bucket)
+scripts/               # GitHub repo, AWS state bucket, and deploy-vars setup helpers
 docs/                  # architecture.md and per-component docs
 ```
 
@@ -61,8 +62,10 @@ account ID, so it is passed at `terraform init` time rather than hardcoded.
 
 1. Create the state bucket once per AWS account: `./scripts/create-tfstate-bucket-in-aws.sh`
    (it prints the bucket name).
-2. Create the GitHub OIDC provider and the deploy IAM role:
-   `./scripts/setup-cicd-permissions-in-aws.sh` (it prints the role ARN).
+2. Create the GitHub OIDC provider and the deploy IAM role by applying the
+   [`bootstrap`](terraform/bootstrap) stack (run once, with admin AWS credentials) —
+   see [`terraform/bootstrap/README.md`](terraform/bootstrap/README.md). Read the role
+   ARN with `terraform -chdir=terraform/bootstrap output -raw deploy_role_arn`.
 3. Set the deploy variables on the `prod` GitHub Environment — run
    `./scripts/setup-deploy-vars-in-github.sh` (uses the `gh` CLI and prompts for each value), or set
    them manually:
