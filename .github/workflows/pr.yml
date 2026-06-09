@@ -55,10 +55,14 @@ jobs:
       - name: Format check
         run: terraform fmt -check -recursive terraform
       # No AWS credentials on PRs, so skip backend init and just validate config.
-      - name: Init
-        run: terraform -chdir=terraform/prod init -backend=false -input=false
-      - name: Validate
-        run: terraform -chdir=terraform/prod validate
+      - name: Init & validate (bootstrap)
+        run: |
+          terraform -chdir=terraform/bootstrap init -backend=false -input=false
+          terraform -chdir=terraform/bootstrap validate
+      - name: Init & validate (prod)
+        run: |
+          terraform -chdir=terraform/prod init -backend=false -input=false
+          terraform -chdir=terraform/prod validate
 
   frontend:
     runs-on: ubuntu-latest

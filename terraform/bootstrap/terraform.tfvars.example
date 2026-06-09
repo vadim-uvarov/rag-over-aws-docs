@@ -1,0 +1,4 @@
+# Copy to terraform.tfvars and edit, or pass with -var on the command line.
+github_repo = "owner/name"
+# aws_region  = "eu-west-1"
+# environment = "prod"
