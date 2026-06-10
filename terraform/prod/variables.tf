@@ -16,6 +16,12 @@ variable "etl_lambda_image_uri" {
   default     = ""
 }
 
+variable "enable_frontend" {
+  description = "Provision the CloudFront frontend hosting module."
+  type        = bool
+  default     = false
+}
+
 variable "enable_query_api" {
   description = "Provision the RAG query API module (requires a built Lambda image)."
   type        = bool

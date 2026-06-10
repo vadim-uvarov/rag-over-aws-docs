@@ -7,11 +7,43 @@ terraform {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
+# Key policy: keep full account/IAM control, and let CloudFront (this account)
+# decrypt so it can serve SSE-KMS objects from web/ via OAC (frontend-hosting).
+data "aws_iam_policy_document" "kms" {
+  statement {
+    sid       = "EnableIAMUserPermissions"
+    actions   = ["kms:*"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+  }
+
+  statement {
+    sid       = "AllowCloudFrontDecrypt"
+    actions   = ["kms:Decrypt"]
+    resources = ["*"]
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+}
+
 # Customer-managed KMS key for at-rest encryption of the project bucket.
 resource "aws_kms_key" "bucket" {
   description             = "SSE-KMS key for the rag-over-aws-docs project bucket"
   deletion_window_in_days = 7
   enable_key_rotation     = true
+  policy                  = data.aws_iam_policy_document.kms.json
   tags                    = var.tags
 }
 

@@ -38,6 +38,13 @@ htmlcov/
 !*.tfvars.example
 .terraform.lock.hcl
 
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
+frontend/.vite/
+
 # OS / editor
 .DS_Store
 Thumbs.db

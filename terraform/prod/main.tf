@@ -65,6 +65,19 @@ module "etl" {
   tags             = local.common_tags
 }
 
+# Frontend hosting (CloudFront + OAC over web/). Disabled by default; enable to
+# provision the distribution, then deploy the SPA with scripts/deploy_frontend.sh.
+module "frontend" {
+  source = "../modules/frontend-hosting"
+  count  = var.enable_frontend ? 1 : 0
+
+  name_prefix                 = local.name_prefix
+  bucket_id                   = module.storage.bucket_id
+  bucket_arn                  = module.storage.bucket_arn
+  bucket_regional_domain_name = module.storage.bucket_regional_domain_name
+  tags                        = local.common_tags
+}
+
 # RAG query API. Disabled until the Lambda container image exists in ECR.
 module "query_api" {
   source = "../modules/query-api"

@@ -28,6 +28,16 @@ output "ask_endpoint" {
   value       = try(module.query_api[0].ask_endpoint, null)
 }
 
+output "frontend_distribution_id" {
+  description = "CloudFront distribution id (null when the frontend is disabled)."
+  value       = try(module.frontend[0].distribution_id, null)
+}
+
+output "frontend_domain_name" {
+  description = "CloudFront domain serving the SPA (null when the frontend is disabled)."
+  value       = try(module.frontend[0].distribution_domain_name, null)
+}
+
 output "sessions_table_name" {
   description = "Session-quota DynamoDB table name (null when the query API is disabled)."
   value       = try(module.query_api[0].sessions_table_name, null)

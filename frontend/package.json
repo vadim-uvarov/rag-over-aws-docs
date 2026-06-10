@@ -2,8 +2,33 @@
   "name": "rag-over-aws-docs-frontend",
   "private": true,
   "version": "0.1.0",
-  "description": "Frontend SPA for rag-over-aws-docs (scaffolded in PR1, built out in PR6).",
+  "type": "module",
+  "description": "Frontend SPA for rag-over-aws-docs: chat with an agent about AWS docs.",
   "scripts": {
-    "build": "node -e \"console.log('frontend build stub — replaced by the Vite SPA in PR6')\""
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/node": "^22.10.5",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
   }
 }

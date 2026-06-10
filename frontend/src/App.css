@@ -1,0 +1,61 @@
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+
+.ask-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.ask-form input {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.ask-form button {
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #ec7211;
+  color: white;
+  cursor: pointer;
+}
+
+.ask-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.prompt {
+  color: #444;
+}
+
+.spinner {
+  color: #ec7211;
+  font-style: italic;
+}
+
+.error {
+  color: #b00020;
+}
+
+.answer p {
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.chunks .distance {
+  color: #666;
+  font-size: 0.85rem;
+}
