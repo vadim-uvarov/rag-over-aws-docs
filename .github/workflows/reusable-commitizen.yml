@@ -1,0 +1,59 @@
+name: Reusable - commitizen
+
+# Shared commit-message check. The range of commits to validate differs between
+# the push pipeline (since the previous version tag) and the PR pipeline (since
+# the PR base branch), selected via the `mode` input.
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: 'Range strategy: "push" (since previous tag) or "pr" (since PR base).'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  commitizen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync
+      - name: Check commit messages
+        env:
+          MODE: ${{ inputs.mode }}
+          BASE_REF: ${{ github.base_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$MODE" = "push" ]; then
+            # Validate every commit message since the previous version tag.
+            PREV_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+            if [ -n "$PREV_TAG" ]; then
+              range="${PREV_TAG}..HEAD"
+            else
+              echo "No previous tag found; skipping range check."
+              exit 0
+            fi
+          else
+            # Resolve a base revision to diff this branch against. Normally that is
+            # the PR base branch, but a stacked PR whose base was merged and then
+            # deleted (or a re-run of a stale event) can point at a branch that no
+            # longer exists on origin. Fall back to the base SHA recorded on the PR
+            # event, and finally to the latest commit so the check never crashes on
+            # a missing revision.
+            if git rev-parse --verify --quiet "origin/$BASE_REF" >/dev/null; then
+              range="origin/$BASE_REF..HEAD"
+            elif git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+              range="$BASE_SHA..HEAD"
+            else
+              range="HEAD~1..HEAD"
+            fi
+          fi
+          echo "Checking commit messages in range: $range"
+          uv run cz check --rev-range "$range"
