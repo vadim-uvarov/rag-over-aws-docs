@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write  # for AWS OIDC, granted to the deploy-prod job
 
 concurrency:
   group: main-pipeline
@@ -13,96 +14,24 @@ concurrency:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-      - run: uv sync
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      - run: uv run mypy
+    uses: ./.github/workflows/reusable-lint.yml
 
   test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-      - run: uv sync
-      - run: uv run pytest
+    uses: ./.github/workflows/reusable-test.yml
 
   frontend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
+    uses: ./.github/workflows/reusable-frontend.yml
 
-  commitizen-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-      - run: uv sync
-      # Validate every commit message since the previous version tag.
-      - name: Check commit messages
-        run: |
-          PREV_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
-          if [ -n "$PREV_TAG" ]; then
-            uv run cz check --rev-range "${PREV_TAG}..HEAD"
-          else
-            echo "No previous tag found; skipping range check."
-          fi
+  commitizen:
+    uses: ./.github/workflows/reusable-commitizen.yml
+    with:
+      mode: push
 
   deploy-prod:
-    needs: [lint, test, frontend, commitizen-check]
-    runs-on: ubuntu-latest
-    environment: prod
+    needs: [lint, test, frontend, commitizen]
     permissions:
       contents: read
-      id-token: write  # for AWS OIDC (configure-aws-credentials)
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
-      - uses: hashicorp/setup-terraform@v3
-      - name: Terraform apply (prod)
-        run: |
-          terraform -chdir=terraform/prod init -input=false \
-            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
-          terraform -chdir=terraform/prod apply -auto-approve -input=false \
-            -var="enable_frontend=true"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Deploy frontend SPA
-        env:
-          API_URL: ${{ vars.API_URL }}
-        run: |
-          BUCKET=$(terraform -chdir=terraform/prod output -raw bucket_name)
-          DIST_ID=$(terraform -chdir=terraform/prod output -raw frontend_distribution_id)
-          bash scripts/deploy_frontend.sh "$BUCKET" "$DIST_ID" "${API_URL:-}"
+      id-token: write
+    uses: ./.github/workflows/reusable-deploy-prod.yml
+    with:
+      ref: main
