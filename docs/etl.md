@@ -94,8 +94,12 @@ S3 corpus/raw/ ─(EventBridge: Object Created/Deleted)─► SQS ingest (+ DLQ)
 - The **Map** state bounds `MaxConcurrency` (Bedrock throttling control), retries
   each task with backoff, and tolerates a small failure percentage; the **DLQ**
   captures messages that fail repeatedly. (Failure alarms land in PR7.)
-- Both Lambdas run from one **container image** (`backend/Dockerfile`); the ETL
-  module is gated behind `enable_etl` until that image is pushed to ECR.
+- Both Lambdas run from one **container image** (`backend/Dockerfile`) — in fact the
+  same image also backs the query-API Lambda, with each function's handler selected
+  via `image_config.command`. The prod deploy pipeline builds this image and pushes it
+  to the shared `rag-aws-etl` ECR repository, then applies the ETL module with
+  `enable_etl=true`; the `enable_etl` default stays `false` for local applies and PR
+  plans. See [`architecture.md`](architecture.md#deploy-sequence).
 
 ### Backfill
 

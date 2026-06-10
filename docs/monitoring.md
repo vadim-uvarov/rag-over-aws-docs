@@ -1,7 +1,9 @@
 # Monitoring & observability
 
 Operational visibility and cost safety across the ETL and query stacks
-(`terraform/modules/monitoring`, gated behind `enable_monitoring`).
+(`terraform/modules/monitoring`). Gated behind `enable_monitoring`, which the prod
+deploy pipeline sets to `true` (the default stays `false` for local applies and PR
+plans). See [`architecture.md`](architecture.md#deploy-sequence).
 
 ## Structured logging
 
@@ -34,8 +36,9 @@ invocations/throttles.
 | `…-bedrock-throttles` | Bedrock `InvocationThrottles > 0` |
 | `<function>-errors` | per-Lambda `Errors > 0` |
 
-The Bedrock **cost** budget alarm is in the `query-api` module (PR5). Subscribe
-an email via `alarm_email`.
+The Bedrock **cost** budget alarm is in the `query-api` module (PR5). The prod
+pipeline leaves `alarm_email` unset, so the SNS topic has **no email subscription** —
+set `alarm_email` (or subscribe an endpoint to the topic) to receive notifications.
 
 ## Tracing
 

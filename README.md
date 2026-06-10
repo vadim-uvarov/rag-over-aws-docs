@@ -13,8 +13,11 @@ tests/
 frontend/              # React SPA (build stub in PR1, full app in PR6)
 terraform/
   modules/storage/     # project S3 bucket + KMS key
-  bootstrap/           # one-time CI/CD identity: GitHub OIDC provider + deploy role
-  prod/                # root stack composition (S3 remote state, project bucket)
+  modules/etl/         # ingestion ETL: SQS, Step Functions, Lambdas
+  modules/query-api/   # synchronous /ask API Gateway + query Lambda
+  modules/monitoring/  # dashboards, alarms, SNS topic
+  bootstrap/           # one-time CI/CD identity: OIDC provider, deploy role, shared ECR repo
+  prod/                # root stack composition (S3 remote state, full stack)
 scripts/               # GitHub repo, AWS state bucket, and deploy-vars setup helpers
 docs/                  # architecture.md and per-component docs
 ```
@@ -55,7 +58,11 @@ make lint test
 
 ### Local deploy
 
-TODO
+The Terraform module enable flags (`enable_etl`, `enable_query_api`,
+`enable_monitoring`) default to `false`, so a plain local `terraform apply` of
+`prod` brings up only `storage` + `frontend` and `terraform validate` / PR plans
+stay green without a container image. The CI/CD pipeline overrides these flags to
+deploy the full stack (see below).
 
 
 ## Setting up the github repo and CI/CD
@@ -73,9 +80,10 @@ account ID, so it is passed at `terraform init` time rather than hardcoded.
 
 1. Create the state bucket once per AWS account: `./scripts/create-tfstate-bucket-in-aws.sh`
    (it prints the bucket name).
-2. Create the GitHub OIDC provider and the deploy IAM role by applying the
-   [`bootstrap`](terraform/bootstrap) stack (run once, with admin AWS credentials) —
-   see [`terraform/bootstrap/README.md`](terraform/bootstrap/README.md). Read the role
+2. Create the GitHub OIDC provider, the deploy IAM role, and the shared `rag-aws-etl`
+   ECR repository by applying the [`bootstrap`](terraform/bootstrap) stack (run once,
+   with admin AWS credentials) — see
+   [`terraform/bootstrap/README.md`](terraform/bootstrap/README.md). Read the role
    ARN with `terraform -chdir=terraform/bootstrap output -raw deploy_role_arn`.
 3. Set the deploy variables on the `prod` GitHub Environment — run
    `./scripts/setup-deploy-vars-in-github.sh` (uses the `gh` CLI and prompts for each value), or set
@@ -85,3 +93,45 @@ account ID, so it is passed at `terraform init` time rather than hardcoded.
    - `TF_STATE_BUCKET` — the bucket name from step 1
 
 The deploy jobs request `id-token: write` for OIDC; no long-lived AWS keys are needed.
+
+### What the prod pipeline deploys
+
+The prod deploy workflow ([`reusable-deploy-prod.yml`](.github/workflows/reusable-deploy-prod.yml))
+brings up the **full stack** — `storage`, `frontend`, ETL, query API, and monitoring.
+On each deploy it:
+
+1. Logs into ECR and builds the shared Lambda container image from
+   [`backend/Dockerfile`](backend/Dockerfile), tagging it with the deployed commit's
+   short SHA and pushing it to the `rag-aws-etl` repository (idempotent — a rerun on
+   the same commit is a no-op). One image backs all three Lambdas (ETL process, ETL
+   dispatch, and the query API); the handler is selected per function via
+   `image_config.command`.
+2. Runs `terraform apply` on `prod` with the module enable flags turned on:
+   `enable_etl=true`, `enable_query_api=true`, `enable_monitoring=true`, and
+   `enable_frontend=true`, passing the freshly pushed image URI to both the ETL and
+   query-API Lambdas. The Terraform variable defaults stay `false` (so local applies
+   and PR plans are unaffected) — enablement happens only through these workflow
+   `-var` overrides.
+
+`alarm_email` is left unset, so the monitoring SNS topic is created without an email
+subscription; subscribe an address there if you want alarm notifications.
+
+### Prerequisites for the first prod deploy
+
+> **The bootstrap stack must be applied manually, out-of-band, BEFORE the first prod
+> deploy.** It creates the `rag-aws-etl` ECR repository and grants the IAM
+> permissions the prod apply depends on (ECR push, Lambda, IAM/PassRole, SQS, Step
+> Functions, EventBridge, CloudWatch Logs/alarms/dashboards, API Gateway, DynamoDB,
+> SNS, Secrets Manager, WAFv2, Budgets). If it is not applied first, the docker push
+> fails (repository missing) and `terraform apply` fails with `AccessDenied`. Apply
+> it per [`terraform/bootstrap/README.md`](terraform/bootstrap/README.md).
+
+> **Verify Bedrock model availability in `eu-west-1`** before the first deploy:
+> `amazon.titan-embed-text-v2:0` (embeddings) and `amazon.nova-micro-v1:0`
+> (generation), with model access enabled in the account. If only cross-region
+> **inference profiles** are available in the region, switch the model IDs to their
+> profile IDs (e.g. `eu.amazon.*`) in
+> [`backend/src/rag_aws/config/settings.py`](backend/src/rag_aws/config/settings.py),
+> and widen the ETL process role's Bedrock statement in
+> [`terraform/modules/etl/iam.tf`](terraform/modules/etl/iam.tf) to also allow the
+> `inference-profile/*` ARN (the query-API role already allows it).
