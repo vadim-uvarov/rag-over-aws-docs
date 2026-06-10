@@ -1,27 +1,31 @@
-name: Deploy to prod (manual)
+name: Deploy PR to prod
 
-# Manual "button": appears under the Actions tab as "Run workflow". Pick any branch
-# (a PR branch or main) in the UI, or override with the `ref` input below.
+# Triggers on every push to a PR targeting main. The job is gated by the
+# prod environment's required-reviewer rule, so it pauses until approved.
+# A "Review deployments" button appears in the PR checks section.
 on:
-  workflow_dispatch:
-    inputs:
-      ref:
-        description: "Git ref (branch / tag / SHA) to deploy. Defaults to the branch the run was started on."
-        required: false
-        default: ""
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+# Only one deployment runs at a time. A new push cancels a pending approval
+# for the same PR so the button always reflects the latest commit.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: true
 
 permissions:
   contents: read
-  id-token: write  # for AWS OIDC (configure-aws-credentials)
+  id-token: write
 
 jobs:
-  deploy-prod:
+  deploy:
     runs-on: ubuntu-latest
     environment: prod
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
