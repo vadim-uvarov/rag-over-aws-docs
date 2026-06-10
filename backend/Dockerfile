@@ -1,5 +1,5 @@
-# Container image for the ETL Lambdas (process + dispatch share this image;
-# the function's image_config.command selects the handler).
+# Container image for the Lambdas (ETL process/dispatch and the query API all
+# share this image; the function's image_config.command selects the handler).
 #
 # Build & push (example):
 #   aws ecr get-login-password --region eu-west-1 | docker login --username AWS \
@@ -16,7 +16,9 @@ RUN pip install --no-cache-dir \
     "llama-index-core" \
     tiktoken \
     lancedb \
-    pyarrow
+    pyarrow \
+    langchain-aws \
+    langfuse
 
 # Ship the package source onto the Lambda runtime path.
 COPY backend/src/rag_aws ${LAMBDA_TASK_ROOT}/rag_aws

@@ -80,6 +80,13 @@ TODO
 - Open a new pull request after a big change to the code
 - Avoid mixing several unrelated tasks inside one pull request
 - If a previous pull request is not yet merged into main, and you need to build a new task on top of these changes, then create a new branch from the previous branch, make changes and open a new pull request which targets the previous pull request
+- Use "merge commit" as a default merging strategy for PR
+- Pull request description sections:
+    - Intro: easy-to-understand summary of the changes
+    - What's here: guide in an easy-to-understand way through all the changes this PR introduces
+    - Technical details: in-depth technical details (just mention all the technical stuff without toom much explanation)
+    - Acceptance criteria: describe acceptance conditions
+    - (Optional section) Additional notes: everything that I should pay attention to and possible caveats.
 
 ## Reviewing a pull request
 - Do the code review of a PR directly on Github (leave the comments there)

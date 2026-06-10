@@ -9,6 +9,8 @@ license = "MIT"
 dependencies = [
     "boto3>=1.43.24",
     "lancedb>=0.33.0 ; platform_machine == 'arm64' or sys_platform != 'darwin'",
+    "langchain-aws>=1.5.1",
+    "langfuse>=4.7.1",
     "llama-index-core>=0.14.22",
     "pyarrow>=24.0.0",
     "tiktoken>=0.13.0",
@@ -21,8 +23,8 @@ dev = [
     "pytest>=8.3",
     "commitizen>=4.0",
     "pre-commit>=4.0",
-    "boto3-stubs[s3]>=1.43.24",
-    "moto[s3]>=5.2.2",
+    "moto[dynamodb,s3]>=5.2.2",
+    "boto3-stubs[bedrock-runtime,dynamodb,s3,secretsmanager,sqs,stepfunctions]>=1.43.24",
 ]
 
 [tool.ruff]

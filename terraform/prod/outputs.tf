@@ -22,3 +22,13 @@ output "etl_state_machine_arn" {
   description = "ETL Step Functions state machine ARN (null when ETL is disabled)."
   value       = try(module.etl[0].state_machine_arn, null)
 }
+
+output "ask_endpoint" {
+  description = "POST /ask endpoint URL (null when the query API is disabled)."
+  value       = try(module.query_api[0].ask_endpoint, null)
+}
+
+output "sessions_table_name" {
+  description = "Session-quota DynamoDB table name (null when the query API is disabled)."
+  value       = try(module.query_api[0].sessions_table_name, null)
+}
