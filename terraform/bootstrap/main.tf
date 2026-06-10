@@ -162,6 +162,30 @@ data "aws_iam_policy_document" "cicd_permissions" {
     ]
     resources = ["*"]
   }
+
+  # CloudFront does not support resource-level restrictions for most actions,
+  # so "*" is required (same pattern as KMS above).
+  statement {
+    sid    = "CloudFront"
+    effect = "Allow"
+    actions = [
+      "cloudfront:CreateDistribution",
+      "cloudfront:GetDistribution",
+      "cloudfront:GetDistributionConfig",
+      "cloudfront:UpdateDistribution",
+      "cloudfront:DeleteDistribution",
+      "cloudfront:TagResource",
+      "cloudfront:ListTagsForResource",
+      "cloudfront:UntagResource",
+      "cloudfront:CreateOriginAccessControl",
+      "cloudfront:GetOriginAccessControl",
+      "cloudfront:UpdateOriginAccessControl",
+      "cloudfront:DeleteOriginAccessControl",
+      "cloudfront:CreateInvalidation",
+      "cloudfront:GetInvalidation",
+    ]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_role_policy" "cicd_permissions" {
