@@ -22,6 +22,18 @@ variable "enable_frontend" {
   default     = false
 }
 
+variable "enable_monitoring" {
+  description = "Provision dashboards + alarms (requires enable_etl and enable_query_api)."
+  type        = bool
+  default     = false
+}
+
+variable "alarm_email" {
+  description = "Optional email subscribed to the alerts SNS topic."
+  type        = string
+  default     = ""
+}
+
 variable "enable_query_api" {
   description = "Provision the RAG query API module (requires a built Lambda image)."
   type        = bool

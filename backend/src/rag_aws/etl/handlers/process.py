@@ -21,11 +21,13 @@ from rag_aws.etl.indexing.lancedb_index import LanceDBIndex
 from rag_aws.etl.interfaces import Chunker, Embedder, VectorIndex
 from rag_aws.etl.pipeline import process_document
 from rag_aws.ingestion.keys import parse_raw_key
+from rag_aws.observability import get_logger
 
 if TYPE_CHECKING:
     from mypy_boto3_s3 import S3Client
 
 BUCKET_ENV = "PROJECT_BUCKET_NAME"
+_logger = get_logger(__name__)
 
 
 def process_item(
@@ -83,6 +85,9 @@ def handler(event: dict[str, str], _context: object = None) -> dict[str, Any]:
     index = LanceDBIndex(
         uri=f"s3://{bucket}/{VECTOR_STORE_PREFIX}", dimensions=settings.embedding_dimensions
     )
-    return process_item(
+    _logger.info("processing document event", extra={"key": event.get("key")})
+    result = process_item(
         event, s3_client=s3_client, chunker=NaiveChunker(), embedder=embedder, index=index
     )
+    _logger.info("processed document event", extra=result)
+    return result

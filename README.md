@@ -41,6 +41,7 @@ incrementally per [`.claude/initial-plan.md`](.claude/initial-plan.md).
 - [`docs/rag.md`](docs/rag.md) — retrieval strategy, prompt, abuse/cost controls
 - [`docs/api.md`](docs/api.md) — `/ask` request/response and errors
 - [`docs/frontend.md`](docs/frontend.md) — SPA UX, run/build/deploy, tests
+- [`docs/monitoring.md`](docs/monitoring.md) — dashboards, alarms, X-Ray, runbook
 
 
 ## Local dev and deploy instructions

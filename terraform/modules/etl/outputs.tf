@@ -13,6 +13,16 @@ output "dlq_arn" {
   value       = aws_sqs_queue.dlq.arn
 }
 
+output "dlq_name" {
+  description = "Name of the ETL dead-letter queue (CloudWatch dimension)."
+  value       = aws_sqs_queue.dlq.name
+}
+
+output "dispatch_function_name" {
+  description = "Name of the dispatch Lambda."
+  value       = aws_lambda_function.dispatch.function_name
+}
+
 output "state_machine_arn" {
   description = "ARN of the ETL Step Functions state machine."
   value       = aws_sfn_state_machine.etl.arn

@@ -23,6 +23,11 @@ output "query_function_name" {
   value       = aws_lambda_function.query.function_name
 }
 
+output "api_name" {
+  description = "REST API name (CloudWatch ApiName dimension)."
+  value       = aws_api_gateway_rest_api.api.name
+}
+
 output "budget_topic_arn" {
   description = "SNS topic ARN for the Bedrock budget alarm."
   value       = aws_sns_topic.budget.arn
