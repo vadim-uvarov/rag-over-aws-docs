@@ -159,6 +159,9 @@ data "aws_iam_policy_document" "cicd_permissions" {
       "kms:UntagResource",
       "kms:ScheduleKeyDeletion",
       "kms:CancelKeyDeletion",
+      # Data-plane actions required when reading/writing SSE-KMS encrypted objects.
+      "kms:GenerateDataKey",
+      "kms:Decrypt",
     ]
     resources = ["*"]
   }
