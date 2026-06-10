@@ -47,6 +47,11 @@ locals {
   # and terraform/prod (project-environment-accountid).
   tfstate_bucket = "${local.project}-tfstate-${data.aws_caller_identity.current.account_id}"
   project_bucket = "${local.project}-${local.environment}-${data.aws_caller_identity.current.account_id}"
+
+  # The prod stack names every resource it creates with this prefix, so the
+  # deploy role's per-service permissions are scoped to "<prefix>-*" ARNs.
+  prod_prefix = "${local.project}-${local.environment}"
+  account_id  = data.aws_caller_identity.current.account_id
 }
 
 # GitHub Actions OIDC identity provider. AWS no longer validates the thumbprint
@@ -89,7 +94,7 @@ resource "aws_iam_role" "cicd_deploy" {
   assume_role_policy = data.aws_iam_policy_document.cicd_trust.json
 }
 
-# Permissions, in three groups:
+# Permissions, in broad groups:
 #   1. Terraform state bucket (init/plan/apply + S3-native locking).
 #   2. The project S3 bucket the prod stack creates and manages. Terraform reads
 #      back every bucket sub-resource (versioning, encryption, lifecycle, public
@@ -99,6 +104,16 @@ resource "aws_iam_role" "cicd_deploy" {
 #      and ListAliases cannot be scoped to a key ARN (the key/aliases are not
 #      addressable at create time), so KMS actions use "*"; access to existing
 #      keys is still gated by each key's own key policy.
+#   4. CloudFront distribution + origin access control for the frontend.
+#   5. ECR: token auth (must be "*") plus layer/image push and read/tag actions
+#      scoped to this stack's repository, so CI can build and push the image.
+#   6. The ETL, Query API and Monitoring modules in terraform/prod. Each apply
+#      runs a terraform refresh that reads back every attribute, so these grant
+#      full create/read/update/delete/tag on the resource types those modules
+#      manage (Lambda, IAM roles, SQS, Step Functions, EventBridge, CloudWatch
+#      logs/alarms/dashboards, API Gateway, DynamoDB, SNS, Secrets Manager,
+#      WAFv2, Budgets), scoped to "rag-over-aws-docs-prod-*" ARNs where the
+#      service supports resource-level permissions and to "*" where it does not.
 data "aws_iam_policy_document" "cicd_permissions" {
   statement {
     sid       = "TerraformStateBucket"
@@ -188,6 +203,187 @@ data "aws_iam_policy_document" "cicd_permissions" {
       "cloudfront:GetInvalidation",
     ]
     resources = ["*"]
+  }
+
+  # ecr:GetAuthorizationToken returns a short-lived registry login token and is
+  # not tied to a repository, so AWS only accepts "*" as its resource.
+  statement {
+    sid       = "EcrAuthToken"
+    effect    = "Allow"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
+
+  # Push and read the single Lambda image, plus the read/tag actions terraform
+  # needs to refresh the repository, all scoped to this stack's repository.
+  statement {
+    sid    = "EcrRepository"
+    effect = "Allow"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:InitiateLayerUpload",
+      "ecr:UploadLayerPart",
+      "ecr:CompleteLayerUpload",
+      "ecr:PutImage",
+      "ecr:BatchGetImage",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:DescribeRepositories",
+      "ecr:DescribeImages",
+      "ecr:ListImages",
+      "ecr:GetRepositoryPolicy",
+      "ecr:GetLifecyclePolicy",
+      "ecr:ListTagsForResource",
+      "ecr:TagResource",
+    ]
+    resources = [aws_ecr_repository.lambda.arn]
+  }
+
+  # All Lambda functions the prod modules create share the "<prefix>-*" name.
+  # Event-source mappings (SQS -> Lambda) get server-generated UUIDs, so they
+  # cannot be name-scoped and are matched with a wildcard.
+  statement {
+    sid     = "Lambda"
+    effect  = "Allow"
+    actions = ["lambda:*"]
+    resources = [
+      "arn:aws:lambda:${var.aws_region}:${local.account_id}:function:${local.prod_prefix}-*",
+      "arn:aws:lambda:${var.aws_region}:${local.account_id}:event-source-mapping:*",
+    ]
+  }
+
+  # The four module roles (etl-process, etl-dispatch, etl-sfn, query) with their
+  # inline policies and managed-policy attachments. PassRole lets Lambda and
+  # Step Functions assume them.
+  statement {
+    sid    = "Iam"
+    effect = "Allow"
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:GetRole",
+      "iam:ListRolePolicies",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListInstanceProfilesForRole",
+      "iam:TagRole",
+      "iam:UntagRole",
+      "iam:PutRolePolicy",
+      "iam:DeleteRolePolicy",
+      "iam:GetRolePolicy",
+      "iam:AttachRolePolicy",
+      "iam:DetachRolePolicy",
+      "iam:PassRole",
+      "iam:UpdateAssumeRolePolicy",
+    ]
+    resources = ["arn:aws:iam::${local.account_id}:role/${local.prod_prefix}-*"]
+  }
+
+  statement {
+    sid       = "Sqs"
+    effect    = "Allow"
+    actions   = ["sqs:*"]
+    resources = ["arn:aws:sqs:${var.aws_region}:${local.account_id}:${local.prod_prefix}-*"]
+  }
+
+  # states:* covers tagging actions too (TagResource/UntagResource/ListTagsForResource).
+  statement {
+    sid       = "StepFunctions"
+    effect    = "Allow"
+    actions   = ["states:*"]
+    resources = ["arn:aws:states:${var.aws_region}:${local.account_id}:stateMachine:${local.prod_prefix}-*"]
+  }
+
+  statement {
+    sid       = "EventBridge"
+    effect    = "Allow"
+    actions   = ["events:*"]
+    resources = ["arn:aws:events:${var.aws_region}:${local.account_id}:rule/${local.prod_prefix}-*"]
+  }
+
+  # Lambda log groups and their streams (the ":*" suffix matches stream ARNs).
+  statement {
+    sid     = "CloudWatchLogs"
+    effect  = "Allow"
+    actions = ["logs:*"]
+    resources = [
+      "arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:/aws/lambda/${local.prod_prefix}-*",
+      "arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:/aws/lambda/${local.prod_prefix}-*:*",
+    ]
+  }
+
+  # logs:DescribeLogGroups does not support resource-level scoping, so it is
+  # granted separately on "*".
+  statement {
+    sid       = "CloudWatchLogsDescribe"
+    effect    = "Allow"
+    actions   = ["logs:DescribeLogGroups"]
+    resources = ["*"]
+  }
+
+  # CloudWatch alarms and dashboards do not support resource-level scoping on
+  # create, so these actions require "*" (same pattern as CloudFront/KMS above).
+  statement {
+    sid    = "CloudWatch"
+    effect = "Allow"
+    actions = [
+      "cloudwatch:PutMetricAlarm",
+      "cloudwatch:DeleteAlarms",
+      "cloudwatch:DescribeAlarms",
+      "cloudwatch:ListTagsForResource",
+      "cloudwatch:TagResource",
+      "cloudwatch:UntagResource",
+      "cloudwatch:PutDashboard",
+      "cloudwatch:GetDashboard",
+      "cloudwatch:ListDashboards",
+      "cloudwatch:DeleteDashboards",
+    ]
+    resources = ["*"]
+  }
+
+  # API Gateway ARNs carry no account-id segment (arn:aws:apigateway:<region>::/...).
+  statement {
+    sid       = "ApiGateway"
+    effect    = "Allow"
+    actions   = ["apigateway:*"]
+    resources = ["arn:aws:apigateway:${var.aws_region}::/*"]
+  }
+
+  statement {
+    sid       = "DynamoDb"
+    effect    = "Allow"
+    actions   = ["dynamodb:*"]
+    resources = ["arn:aws:dynamodb:${var.aws_region}:${local.account_id}:table/${local.prod_prefix}-*"]
+  }
+
+  statement {
+    sid       = "Sns"
+    effect    = "Allow"
+    actions   = ["sns:*"]
+    resources = ["arn:aws:sns:${var.aws_region}:${local.account_id}:${local.prod_prefix}-*"]
+  }
+
+  # Secret ARNs end in a random 6-char suffix; the "<prefix>-*" wildcard covers it.
+  statement {
+    sid       = "SecretsManager"
+    effect    = "Allow"
+    actions   = ["secretsmanager:*"]
+    resources = ["arn:aws:secretsmanager:${var.aws_region}:${local.account_id}:secret:${local.prod_prefix}-*"]
+  }
+
+  # WAFv2 ARNs embed generated ids and associating a Web ACL with the API Gateway
+  # stage needs broad access, so resource-level scoping is impractical here.
+  statement {
+    sid       = "WafV2"
+    effect    = "Allow"
+    actions   = ["wafv2:*"]
+    resources = ["*"]
+  }
+
+  # Budgets are a global service with no region segment in their ARNs.
+  statement {
+    sid       = "Budgets"
+    effect    = "Allow"
+    actions   = ["budgets:*"]
+    resources = ["arn:aws:budgets::${local.account_id}:budget/*"]
   }
 }
 
