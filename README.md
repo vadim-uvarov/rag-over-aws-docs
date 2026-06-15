@@ -89,8 +89,12 @@ account ID, so it is passed at `terraform init` time rather than hardcoded.
    `./scripts/setup-deploy-vars-in-github.sh` (uses the `gh` CLI and prompts for each value), or set
    them manually:
    - `AWS_ROLE_ARN` — the role ARN from step 2 (assumed via GitHub OIDC by `aws-actions/configure-aws-credentials`)
-   - `AWS_REGION` — same region as `aws_region`
    - `TF_STATE_BUCKET` — the bucket name from step 1
+
+The AWS region is **not** a GitHub variable: it is defined once as the `aws_region`
+variable default in [`terraform/prod/variables.tf`](terraform/prod/variables.tf) and
+the deploy workflow reads it from there (for the AWS credentials, ECR, and the
+Terraform backend region). Change the region in that one place.
 
 The deploy jobs request `id-token: write` for OIDC; no long-lived AWS keys are needed.
 

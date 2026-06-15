@@ -82,7 +82,7 @@ availability in `eu-west-1`).
 
 | Topic | Decision |
 |---|---|
-| Region | **eu-west-1** (matches existing Terraform backend + CI/OIDC setup) |
+| Region | **eu-west-1** — defined once as the `aws_region` variable default in the Terraform stacks; the deploy workflow, backend, and credentials all derive from it |
 | Embedding model | **Amazon Titan Text Embeddings V2** (`amazon.titan-embed-text-v2:0`), 512-dim |
 | Generation model | **Amazon Nova Micro** (`amazon.nova-micro-v1:0`) |
 | Vector store | **LanceDB** on S3 |

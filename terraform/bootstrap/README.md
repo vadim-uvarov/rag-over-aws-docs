@@ -26,8 +26,13 @@ Prerequisite: the state bucket exists (`scripts/create-tfstate-bucket-in-aws.sh`
 ```sh
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 
+# The region mirrors the aws_region variable default (the single source of truth)
+# and is supplied at init time, since backend blocks cannot interpolate variables.
+AWS_REGION="$(awk -F'"' '/variable "aws_region"/ {f=1} f && /default/ {print $2; exit}' terraform/bootstrap/variables.tf)"
+
 terraform -chdir=terraform/bootstrap init -input=false \
-  -backend-config="bucket=rag-over-aws-docs-tfstate-${ACCOUNT_ID}"
+  -backend-config="bucket=rag-over-aws-docs-tfstate-${ACCOUNT_ID}" \
+  -backend-config="region=${AWS_REGION}"
 
 terraform -chdir=terraform/bootstrap apply \
   -var="github_repo=<owner>/<name>"
