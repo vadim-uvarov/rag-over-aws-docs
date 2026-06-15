@@ -2,10 +2,11 @@ terraform {
   required_version = ">= 1.5"
 
   # Remote state in S3 with S3-native locking. The bucket name embeds the AWS
-  # account ID, so it is supplied at init time rather than hardcoded here.
+  # account ID and the region mirrors var.aws_region (the single source of truth
+  # for the region), so both are supplied at init time via -backend-config rather
+  # than hardcoded here.
   backend "s3" {
     key          = "prod/terraform.tfstate"
-    region       = "eu-west-1"
     encrypt      = true
     use_lockfile = true
   }
