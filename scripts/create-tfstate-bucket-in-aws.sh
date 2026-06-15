@@ -9,10 +9,10 @@ set -euo pipefail
 
 PROJECT="rag-over-aws-docs"
 
-# Single source of truth for the region: the aws_region variable default in the
-# prod stack. Read it here so this bootstrap script never hardcodes its own copy.
+# Single source of truth for the region: config/deploy.json (also read by the
+# Terraform stacks and the deploy workflow), so this script never hardcodes a copy.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REGION="$(awk -F'"' '/variable "aws_region"/ {f=1} f && /default/ {print $2; exit}' "$SCRIPT_DIR/../terraform/prod/variables.tf")"
+REGION="$(jq -er .aws_region "$SCRIPT_DIR/../config/deploy.json")"
 
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 BUCKET="${PROJECT}-tfstate-${ACCOUNT_ID}"

@@ -2,9 +2,9 @@ terraform {
   required_version = ">= 1.5"
 
   # Remote state in S3 with S3-native locking. The bucket name embeds the AWS
-  # account ID and the region mirrors var.aws_region (the single source of truth
-  # for the region), so both are supplied at init time via -backend-config rather
-  # than hardcoded here.
+  # account ID and the region mirrors local.aws_region (sourced from
+  # config/deploy.json, the single source of truth for the region), so both are
+  # supplied at init time via -backend-config rather than hardcoded here.
   backend "s3" {
     key          = "prod/terraform.tfstate"
     encrypt      = true
@@ -20,7 +20,7 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region = local.aws_region
 
   default_tags {
     tags = local.common_tags
@@ -33,6 +33,10 @@ data "aws_caller_identity" "current" {}
 locals {
   project     = "rag-over-aws-docs"
   environment = "prod"
+
+  # Single source of truth for the AWS region, shared with the bootstrap stack
+  # and the CI/CD workflow (see config/deploy.json).
+  aws_region = jsondecode(file("${path.module}/../../config/deploy.json")).aws_region
 
   common_tags = {
     Project     = local.project
@@ -58,7 +62,7 @@ module "etl" {
   count  = var.enable_etl ? 1 : 0
 
   name_prefix      = local.name_prefix
-  aws_region       = var.aws_region
+  aws_region       = local.aws_region
   bucket_name      = module.storage.bucket_id
   bucket_arn       = module.storage.bucket_arn
   kms_key_arn      = module.storage.kms_key_arn
@@ -85,7 +89,7 @@ module "query_api" {
   count  = var.enable_query_api ? 1 : 0
 
   name_prefix      = local.name_prefix
-  aws_region       = var.aws_region
+  aws_region       = local.aws_region
   bucket_name      = module.storage.bucket_id
   bucket_arn       = module.storage.bucket_arn
   kms_key_arn      = module.storage.kms_key_arn
@@ -100,7 +104,7 @@ module "monitoring" {
   count  = var.enable_monitoring ? 1 : 0
 
   name_prefix         = local.name_prefix
-  aws_region          = var.aws_region
+  aws_region          = local.aws_region
   alarm_email         = var.alarm_email
   state_machine_arn   = module.etl[0].state_machine_arn
   dlq_name            = module.etl[0].dlq_name

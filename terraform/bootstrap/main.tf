@@ -4,9 +4,9 @@ terraform {
   # Bootstrap state lives in the same bucket as the prod stack, under a separate
   # key. The bucket is created out-of-band (scripts/create-tfstate-bucket-in-aws.sh)
   # because it must exist before any Terraform runs. The bucket name embeds the
-  # account ID and the region mirrors var.aws_region (the single source of truth
-  # for the region), so both are supplied at init time via -backend-config rather
-  # than hardcoded here.
+  # account ID and the region mirrors local.aws_region (sourced from
+  # config/deploy.json, the single source of truth for the region), so both are
+  # supplied at init time via -backend-config rather than hardcoded here.
   backend "s3" {
     key          = "bootstrap/terraform.tfstate"
     encrypt      = true
@@ -22,7 +22,7 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region = local.aws_region
 
   default_tags {
     tags = local.common_tags
@@ -37,6 +37,10 @@ locals {
   project     = "rag-over-aws-docs"
   environment = var.environment
   oidc_host   = "token.actions.githubusercontent.com"
+
+  # Single source of truth for the AWS region, shared with the prod stack and the
+  # CI/CD workflow (see config/deploy.json).
+  aws_region = jsondecode(file("${path.module}/../../config/deploy.json")).aws_region
 
   common_tags = {
     Project     = local.project
@@ -247,8 +251,8 @@ data "aws_iam_policy_document" "cicd_permissions" {
     effect  = "Allow"
     actions = ["lambda:*"]
     resources = [
-      "arn:aws:lambda:${var.aws_region}:${local.account_id}:function:${local.prod_prefix}-*",
-      "arn:aws:lambda:${var.aws_region}:${local.account_id}:event-source-mapping:*",
+      "arn:aws:lambda:${local.aws_region}:${local.account_id}:function:${local.prod_prefix}-*",
+      "arn:aws:lambda:${local.aws_region}:${local.account_id}:event-source-mapping:*",
     ]
   }
 
@@ -282,7 +286,7 @@ data "aws_iam_policy_document" "cicd_permissions" {
     sid       = "Sqs"
     effect    = "Allow"
     actions   = ["sqs:*"]
-    resources = ["arn:aws:sqs:${var.aws_region}:${local.account_id}:${local.prod_prefix}-*"]
+    resources = ["arn:aws:sqs:${local.aws_region}:${local.account_id}:${local.prod_prefix}-*"]
   }
 
   # states:* covers tagging actions too (TagResource/UntagResource/ListTagsForResource).
@@ -290,14 +294,14 @@ data "aws_iam_policy_document" "cicd_permissions" {
     sid       = "StepFunctions"
     effect    = "Allow"
     actions   = ["states:*"]
-    resources = ["arn:aws:states:${var.aws_region}:${local.account_id}:stateMachine:${local.prod_prefix}-*"]
+    resources = ["arn:aws:states:${local.aws_region}:${local.account_id}:stateMachine:${local.prod_prefix}-*"]
   }
 
   statement {
     sid       = "EventBridge"
     effect    = "Allow"
     actions   = ["events:*"]
-    resources = ["arn:aws:events:${var.aws_region}:${local.account_id}:rule/${local.prod_prefix}-*"]
+    resources = ["arn:aws:events:${local.aws_region}:${local.account_id}:rule/${local.prod_prefix}-*"]
   }
 
   # Lambda log groups and their streams (the ":*" suffix matches stream ARNs).
@@ -306,8 +310,8 @@ data "aws_iam_policy_document" "cicd_permissions" {
     effect  = "Allow"
     actions = ["logs:*"]
     resources = [
-      "arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:/aws/lambda/${local.prod_prefix}-*",
-      "arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:/aws/lambda/${local.prod_prefix}-*:*",
+      "arn:aws:logs:${local.aws_region}:${local.account_id}:log-group:/aws/lambda/${local.prod_prefix}-*",
+      "arn:aws:logs:${local.aws_region}:${local.account_id}:log-group:/aws/lambda/${local.prod_prefix}-*:*",
     ]
   }
 
@@ -345,21 +349,21 @@ data "aws_iam_policy_document" "cicd_permissions" {
     sid       = "ApiGateway"
     effect    = "Allow"
     actions   = ["apigateway:*"]
-    resources = ["arn:aws:apigateway:${var.aws_region}::/*"]
+    resources = ["arn:aws:apigateway:${local.aws_region}::/*"]
   }
 
   statement {
     sid       = "DynamoDb"
     effect    = "Allow"
     actions   = ["dynamodb:*"]
-    resources = ["arn:aws:dynamodb:${var.aws_region}:${local.account_id}:table/${local.prod_prefix}-*"]
+    resources = ["arn:aws:dynamodb:${local.aws_region}:${local.account_id}:table/${local.prod_prefix}-*"]
   }
 
   statement {
     sid       = "Sns"
     effect    = "Allow"
     actions   = ["sns:*"]
-    resources = ["arn:aws:sns:${var.aws_region}:${local.account_id}:${local.prod_prefix}-*"]
+    resources = ["arn:aws:sns:${local.aws_region}:${local.account_id}:${local.prod_prefix}-*"]
   }
 
   # Secret ARNs end in a random 6-char suffix; the "<prefix>-*" wildcard covers it.
@@ -367,7 +371,7 @@ data "aws_iam_policy_document" "cicd_permissions" {
     sid       = "SecretsManager"
     effect    = "Allow"
     actions   = ["secretsmanager:*"]
-    resources = ["arn:aws:secretsmanager:${var.aws_region}:${local.account_id}:secret:${local.prod_prefix}-*"]
+    resources = ["arn:aws:secretsmanager:${local.aws_region}:${local.account_id}:secret:${local.prod_prefix}-*"]
   }
 
   # WAFv2 ARNs embed generated ids and associating a Web ACL with the API Gateway

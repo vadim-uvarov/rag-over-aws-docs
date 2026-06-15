@@ -1,7 +1,7 @@
 name: Reusable - deploy to prod
 
 # Shared prod deployment. Steps:
-#   1. Resolve the AWS region from Terraform.
+#   1. Resolve the AWS region from the shared deploy config.
 #   2. Configure AWS credentials via OIDC.
 #   3. Build and push the Lambda image to ECR.
 #   4. terraform apply (prod).
@@ -33,16 +33,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
-      # Single source of truth for the region: the aws_region variable default in
-      # terraform/prod/variables.tf. Read it here so credentials, ECR and the
-      # Terraform backend all share one value and nothing is duplicated in GitHub.
-      - name: Resolve AWS region from Terraform
+      # Single source of truth for the region: config/deploy.json, also read by the
+      # Terraform stacks. Resolve it here so credentials, ECR and the Terraform
+      # backend share one value and nothing is duplicated in GitHub.
+      - name: Resolve AWS region from deploy config
         run: |
-          AWS_REGION="$(awk -F'"' '/variable "aws_region"/ {f=1} f && /default/ {print $2; exit}' terraform/prod/variables.tf)"
-          if [ -z "$AWS_REGION" ]; then
-            echo "Could not resolve aws_region from terraform/prod/variables.tf" >&2
-            exit 1
-          fi
+          AWS_REGION="$(jq -er .aws_region config/deploy.json)"
           echo "AWS_REGION=$AWS_REGION" >> "$GITHUB_ENV"
           echo "Resolved AWS region: $AWS_REGION"
       - name: Configure AWS credentials
