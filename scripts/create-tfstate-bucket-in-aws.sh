@@ -8,7 +8,11 @@ set -euo pipefail
 # ignored.
 
 PROJECT="rag-over-aws-docs"
-REGION="eu-west-1"
+
+# Single source of truth for the region: the aws_region variable default in the
+# prod stack. Read it here so this bootstrap script never hardcodes its own copy.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REGION="$(awk -F'"' '/variable "aws_region"/ {f=1} f && /default/ {print $2; exit}' "$SCRIPT_DIR/../terraform/prod/variables.tf")"
 
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 BUCKET="${PROJECT}-tfstate-${ACCOUNT_ID}"
