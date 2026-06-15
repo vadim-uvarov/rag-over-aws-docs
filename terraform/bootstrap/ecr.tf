@@ -21,6 +21,38 @@ resource "aws_ecr_repository" "lambda" {
   tags = local.common_tags
 }
 
+# Resource-based policy letting the Lambda service pull the image. A container
+# Lambda is created by the deploy role, but the *image pull at create/update time
+# is performed by the Lambda service itself*, so the repository must grant
+# lambda.amazonaws.com read access — the deploy role's ECR push permissions do
+# not cover this. Without it, CreateFunction fails with AccessDeniedException
+# ("Lambda does not have permission to access the ECR image"). Scoped via
+# aws:sourceArn to this project's prod functions so no other account/function can
+# pull the image.
+resource "aws_ecr_repository_policy" "lambda" {
+  repository = aws_ecr_repository.lambda.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "LambdaECRImageRetrievalPolicy"
+        Effect    = "Allow"
+        Principal = { Service = "lambda.amazonaws.com" }
+        Action = [
+          "ecr:BatchGetImage",
+          "ecr:GetDownloadUrlForLayer",
+        ]
+        Condition = {
+          StringLike = {
+            "aws:sourceArn" = "arn:aws:lambda:${local.aws_region}:${local.account_id}:function:${local.prod_prefix}-*"
+          }
+        }
+      },
+    ]
+  })
+}
+
 # Bound the repository's growth: drop dangling untagged layers quickly and keep
 # only a small window of recent tagged images for rollbacks.
 resource "aws_ecr_lifecycle_policy" "lambda" {
