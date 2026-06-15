@@ -1,7 +1,11 @@
 name: Reusable - deploy to prod
 
-# Shared prod deployment: AWS OIDC -> build/push Lambda image -> terraform apply
-# (prod) -> deploy frontend SPA.
+# Shared prod deployment. Steps:
+#   1. Resolve the AWS region from Terraform.
+#   2. Configure AWS credentials via OIDC.
+#   3. Build and push the Lambda image to ECR.
+#   4. terraform apply (prod).
+#   5. Deploy the frontend SPA.
 # A single container image (rag-aws-etl, tagged by commit SHA) is pushed to ECR
 # before terraform runs, because the ETL and Query-API Lambdas reference it by
 # tag; the same image serves all functions (the handler is selected per-Lambda via
