@@ -297,6 +297,16 @@ data "aws_iam_policy_document" "cicd_permissions" {
     resources = ["arn:aws:states:${local.aws_region}:${local.account_id}:stateMachine:${local.prod_prefix}-*"]
   }
 
+  # ValidateStateMachineDefinition checks a definition before any state machine
+  # exists, so it has no specific resource to scope to and AWS requires "*". It
+  # is therefore split out of the resource-scoped StepFunctions statement above.
+  statement {
+    sid       = "StepFunctionsValidateDefinition"
+    effect    = "Allow"
+    actions   = ["states:ValidateStateMachineDefinition"]
+    resources = ["*"]
+  }
+
   statement {
     sid       = "EventBridge"
     effect    = "Allow"
