@@ -2098,7 +2098,7 @@ wheels = [
 [[package]]
 name = "rag-over-aws-docs"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "boto3" },
     { name = "lancedb", marker = "platform_machine == 'arm64' or sys_platform != 'darwin'" },
