@@ -28,6 +28,11 @@ output "ask_endpoint" {
   value       = try(module.query_api[0].ask_endpoint, null)
 }
 
+output "api_invoke_url" {
+  description = "Base API stage invoke URL, without the /ask path (null when the query API is disabled). Use this for the frontend's VITE_API_URL."
+  value       = try(module.query_api[0].api_invoke_url, null)
+}
+
 output "frontend_distribution_id" {
   description = "CloudFront distribution id (null when the frontend is disabled)."
   value       = try(module.frontend[0].distribution_id, null)
