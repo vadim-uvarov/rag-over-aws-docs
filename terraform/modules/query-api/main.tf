@@ -114,6 +114,58 @@ resource "aws_lambda_permission" "apigw" {
   source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
 }
 
+# --- CORS preflight: OPTIONS /ask (MOCK integration) -----------------------
+# The SPA is served from a different origin (CloudFront) than the API, so the
+# browser sends an OPTIONS preflight before the cross-origin POST. Without an
+# OPTIONS method API Gateway answers 403 with no CORS headers, which the browser
+# surfaces as a CORS error. A MOCK integration returns the preflight headers
+# without invoking the Lambda. The POST response itself carries
+# Access-Control-Allow-Origin from the Lambda handler.
+
+resource "aws_api_gateway_method" "options_ask" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.ask.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "options_ask" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.ask.id
+  http_method = aws_api_gateway_method.options_ask.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "options_ask" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.ask.id
+  http_method = aws_api_gateway_method.options_ask.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "options_ask" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.ask.id
+  http_method = aws_api_gateway_method.options_ask.http_method
+  status_code = aws_api_gateway_method_response.options_ask.status_code
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type'"
+    "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,POST'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
 resource "aws_api_gateway_deployment" "this" {
   rest_api_id = aws_api_gateway_rest_api.api.id
 
@@ -122,6 +174,9 @@ resource "aws_api_gateway_deployment" "this" {
       aws_api_gateway_resource.ask.id,
       aws_api_gateway_method.post_ask.id,
       aws_api_gateway_integration.lambda.id,
+      aws_api_gateway_method.options_ask.id,
+      aws_api_gateway_integration.options_ask.id,
+      aws_api_gateway_integration_response.options_ask.id,
     ]))
   }
 
