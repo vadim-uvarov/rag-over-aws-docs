@@ -8,7 +8,11 @@ set -euo pipefail
 # ignored.
 
 PROJECT="rag-over-aws-docs"
-REGION="eu-west-1"
+
+# Single source of truth for the region: config/deploy.json (also read by the
+# Terraform stacks and the deploy workflow), so this script never hardcodes a copy.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REGION="$(jq -er .aws_region "$SCRIPT_DIR/../config/deploy.json")"
 
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 BUCKET="${PROJECT}-tfstate-${ACCOUNT_ID}"

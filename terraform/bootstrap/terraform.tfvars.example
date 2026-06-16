@@ -1,4 +1,5 @@
 # Copy to terraform.tfvars and edit, or pass with -var on the command line.
+# The AWS region is not set here: it comes from config/deploy.json (the single
+# source of truth, shared with the prod stack and CI).
 github_repo = "owner/name"
-# aws_region  = "eu-west-1"
 # environment = "prod"

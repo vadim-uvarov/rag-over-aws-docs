@@ -1,6 +1,15 @@
 name: Reusable - deploy to prod
 
-# Shared prod deployment: AWS OIDC -> terraform apply (prod) -> deploy frontend SPA.
+# Shared prod deployment. Steps:
+#   1. Resolve the AWS region from the shared deploy config.
+#   2. Configure AWS credentials via OIDC.
+#   3. Build and push the Lambda image to ECR.
+#   4. terraform apply (prod).
+#   5. Deploy the frontend SPA.
+# A single container image (rag-aws-etl, tagged by commit SHA) is pushed to ECR
+# before terraform runs, because the ETL and Query-API Lambdas reference it by
+# tag; the same image serves all functions (the handler is selected per-Lambda via
+# image_config.command).
 # Imported by main.yml, deploy-manual.yml and deploy-pr.yml, which differ only in
 # the git ref they deploy.
 on:
@@ -24,18 +33,52 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
+      # Single source of truth for the region: config/deploy.json, also read by the
+      # Terraform stacks. Resolve it here so credentials, ECR and the Terraform
+      # backend share one value and nothing is duplicated in GitHub.
+      - name: Resolve AWS region from deploy config
+        run: |
+          AWS_REGION="$(jq -er .aws_region config/deploy.json)"
+          echo "AWS_REGION=$AWS_REGION" >> "$GITHUB_ENV"
+          echo "Resolved AWS region: $AWS_REGION"
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
+      # Build/push BEFORE terraform apply: the Lambdas reference this image by an
+      # immutable commit-SHA tag, so it must already exist in ECR when terraform
+      # creates them. One image serves every function (handler chosen per-Lambda
+      # via image_config.command).
+      - name: Log in to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push Lambda image
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          IMAGE_TAG="$(git rev-parse --short HEAD)"
+          IMAGE_URI="${REGISTRY}/rag-aws-etl:${IMAGE_TAG}"
+          # Skip the build when this commit's image is already in ECR (idempotent reruns).
+          if aws ecr describe-images --repository-name rag-aws-etl --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1; then
+            echo "image exists, skipping build"
+          else
+            docker build -t "$IMAGE_URI" -f backend/Dockerfile . && docker push "$IMAGE_URI"
+          fi
+          echo "IMAGE_URI=$IMAGE_URI" >> "$GITHUB_ENV"
       - uses: hashicorp/setup-terraform@v3
       - name: Terraform apply (prod)
         run: |
           terraform -chdir=terraform/prod init -input=false \
-            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="region=${AWS_REGION}"
           terraform -chdir=terraform/prod apply -auto-approve -input=false \
-            -var="enable_frontend=true"
+            -var="enable_frontend=true" \
+            -var="enable_etl=true" \
+            -var="etl_lambda_image_uri=${IMAGE_URI}" \
+            -var="enable_query_api=true" \
+            -var="query_lambda_image_uri=${IMAGE_URI}" \
+            -var="enable_monitoring=true"
       - uses: actions/setup-node@v4
         with:
           node-version: "20"

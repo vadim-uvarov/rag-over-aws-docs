@@ -3,12 +3,6 @@ variable "github_repo" {
   type        = string
 }
 
-variable "aws_region" {
-  description = "AWS region for the provider."
-  type        = string
-  default     = "eu-west-1"
-}
-
 variable "environment" {
   description = "Deployment environment; scopes the role trust policy and the bucket names it grants access to."
   type        = string
