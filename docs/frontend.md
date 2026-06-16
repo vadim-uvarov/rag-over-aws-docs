@@ -34,7 +34,11 @@ scripts/deploy_frontend.sh <bucket> <distribution-id> <api-url>
 ## Configuration
 
 `VITE_API_URL` (build-time) sets the API base; `/ask` is appended. Empty means
-same-origin (useful for the Playwright mock).
+same-origin (useful for the Playwright mock) — but in a deployed SPA that makes
+`/ask` resolve to the CloudFront-served `index.html` (HTTP 200, HTML body),
+which the client cannot parse and surfaces as the generic error. The prod deploy
+pipeline therefore sources it from the `api_invoke_url` Terraform output (not a
+manually-set GitHub variable), so the SPA always points at the applied API stage.
 
 ## Tests
 
