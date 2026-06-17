@@ -20,6 +20,21 @@ fields @timestamp, level, message, key, chunks
 
 Log groups have bounded retention (`log_retention_days`).
 
+The query handler logs one line per downstream stage — `building dependencies` →
+`connecting vector index` / `vector index connected` → `recording session quota`
+→ `retrieving chunks` → `generating answer` → `recording trace` → `handled /ask`.
+A timeout produces no traceback, so the **last** stage logged before the function
+stops is the call that hung (e.g. stopping after `connecting vector index` points
+at the cold S3/LanceDB read).
+
+## Fast-fail AWS timeouts
+
+The query Lambda's boto3 clients (Bedrock, DynamoDB, Secrets Manager) and the
+Nova generation client use a shared botocore config (`connect_timeout=3`,
+`read_timeout=20`, `max_attempts=2`). A stuck downstream call therefore raises a
+clear error well under the API Gateway 29s limit instead of riding to the
+Lambda's 30s timeout (which the caller only sees as an opaque 504).
+
 ## Dashboard
 
 `…-overview` has four widgets: API requests/4XX/5XX/p95 latency · query Lambda
@@ -53,7 +68,7 @@ set `alarm_email` (or subscribe an endpoint to the topic) to receive notificatio
 |---|---|---|
 | `etl-dlq-not-empty` | A file repeatedly fails chunk/embed/index | Inspect the DLQ message + the process Lambda logs (filter by `key`). Fix the cause, then re-drive the DLQ back onto the ingest queue. |
 | `sfn-failed-executions` | Bedrock throttling or a bad batch item | Open the failed execution; check the `ProcessDocument` task error. Throttling → lower `map_max_concurrency`; bad item → fix the source doc. |
-| `api-5xx` | Query Lambda errors / timeouts / cold LanceDB | Check query Lambda logs + X-Ray; verify the vector store exists and the index is populated (run the backfill). |
+| `api-5xx` / 504 | Query Lambda errors / timeouts / cold LanceDB | Find the **last per-stage log line** before the function stopped to localise the hang; cross-check the X-Ray subsegments. Verify the vector store exists and the index is populated (run the backfill). |
 | `bedrock-throttles` | Burst of requests or low quota | Reduce concurrency; request a Bedrock quota increase. |
 | Budget alarm | Bedrock spend over threshold | Review usage in Cost Explorer; tighten the per-session/daily caps. |
 | All answers are "I don't know" | Empty/missing vector store | Confirm ingestion ran and the backfill indexed `corpus/raw/` into `corpus/vector-store/`. |

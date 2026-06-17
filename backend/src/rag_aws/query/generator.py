@@ -7,10 +7,15 @@ returns exactly ``"I don't know the answer"`` and never calls the model.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
+
+from langchain_aws import ChatBedrockConverse
 
 from rag_aws.config.settings import NOVA_MICRO_MODEL_ID
 from rag_aws.etl.interfaces import SearchResult
+
+if TYPE_CHECKING:
+    from botocore.config import Config
 
 # Returned verbatim when retrieval finds nothing relevant (exact wording matters).
 FALLBACK_ANSWER = "I don't know the answer"
@@ -62,11 +67,12 @@ class NovaMicroModel(ChatModel):
         model_id: str = NOVA_MICRO_MODEL_ID,
         region_name: str = "eu-west-1",
         temperature: float = 0.0,
+        config: Config | None = None,
     ) -> None:
-        from langchain_aws import ChatBedrockConverse
-
+        # `config` carries the fast-fail botocore timeouts so a stuck Bedrock call
+        # surfaces an error well before the Lambda's hard timeout.
         self._chat = ChatBedrockConverse(
-            model=model_id, region_name=region_name, temperature=temperature
+            model=model_id, region_name=region_name, temperature=temperature, config=config
         )
 
     def invoke(self, prompt: str) -> str:
