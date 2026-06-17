@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 
 from rag_aws.etl.interfaces import Embedder, SearchResult, VectorIndex
 from rag_aws.query.generator import FALLBACK_ANSWER, AnswerGenerator
-from rag_aws.query.handler import QueryDependencies, process_query, shape_chunks
+from rag_aws.query.handler import (
+    QueryDependencies,
+    build_aws_client_config,
+    process_query,
+    shape_chunks,
+)
 from rag_aws.query.retriever import Retriever
 from rag_aws.query.session import SessionUsage
 
@@ -102,3 +108,12 @@ def test_shape_chunks_builds_links_and_distance() -> None:
     assert chunk["source_doc"] == "s3/intro.md"
     assert chunk["link"].startswith("https://github.com/awsdocs/amazon-s3-userguide/")
     assert chunk["cosine_distance"] == round(1 - 0.75, 6)
+
+
+def test_aws_client_config_bounds_timeouts_and_retries() -> None:
+    # Fast-fail config keeps a stuck AWS call under the API Gateway 29s limit.
+    # botocore sets these attributes dynamically (untyped), so read via Any.
+    config: Any = build_aws_client_config()
+    assert config.connect_timeout == 3
+    assert config.read_timeout == 20
+    assert config.retries == {"max_attempts": 2}

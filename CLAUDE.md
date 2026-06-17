@@ -28,6 +28,9 @@ TODO
 ## Clean code
 - Avoid very large functions. It's always better to break down a large function into several smaller ones with clear naming.
 
+## Imports
+- Python: always list all of the imports in the beginning of the module. Don't nest imports inside functions.
+
 ## Commits
 - Use commitizen format for commit messages
 - Mention yourself as a co-author
