@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from typing import Any
 
+import pytest
+
+from rag_aws.etl.indexing.lancedb_index import VectorStoreNotFoundError
 from rag_aws.etl.interfaces import Embedder, SearchResult, VectorIndex
+from rag_aws.query import handler as handler_module
 from rag_aws.query.generator import FALLBACK_ANSWER, AnswerGenerator
 from rag_aws.query.handler import (
     QueryDependencies,
     build_aws_client_config,
+    handler,
     process_query,
     shape_chunks,
 )
@@ -117,3 +123,17 @@ def test_aws_client_config_bounds_timeouts_and_retries() -> None:
     assert config.connect_timeout == 3
     assert config.read_timeout == 20
     assert config.retries == {"max_attempts": 2}
+
+
+def test_handler_returns_503_when_vector_store_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A missing vector store must fail fast as 503, not hang attempting a write.
+    def _raise() -> QueryDependencies:
+        raise VectorStoreNotFoundError("not built")
+
+    monkeypatch.setattr(handler_module, "_build_dependencies", _raise)
+    response = handler({"body": json.dumps({"question": "hi"})})
+
+    assert response["statusCode"] == 503
+    assert "not ready" in json.loads(response["body"])["error"]

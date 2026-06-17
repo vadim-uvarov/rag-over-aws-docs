@@ -45,6 +45,7 @@ When retrieval finds nothing relevant, `answer` is exactly
 |---|---|---|
 | `400` | Missing `question` or non-JSON body | `{ "error": "…" }` |
 | `429` | Session question limit reached | `{ "error": "session question limit reached", "session": {…} }` |
+| `503` | Vector store not built yet (run the ETL backfill) | `{ "error": "knowledge base is not ready yet" }` |
 
 Additional limits enforced outside the handler: per-IP WAF rate limiting, a
 global daily usage-plan quota, and stage throttling.

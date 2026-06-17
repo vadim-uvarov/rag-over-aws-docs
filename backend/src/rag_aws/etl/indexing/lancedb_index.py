@@ -16,6 +16,14 @@ from rag_aws.etl.interfaces import EmbeddedChunk, SearchResult, VectorIndex
 TABLE_NAME = "chunks"
 
 
+class VectorStoreNotFoundError(RuntimeError):
+    """Raised when a read-only consumer opens a table that has not been built yet.
+
+    Signals that the ETL backfill has not populated the vector store, rather than
+    letting a read path attempt a write (``create_table``) it has no permission for.
+    """
+
+
 class LanceDBIndex(VectorIndex):
     """A :class:`VectorIndex` stored as a LanceDB table.
 
@@ -28,13 +36,16 @@ class LanceDBIndex(VectorIndex):
         uri: str,
         dimensions: int = EMBEDDING_DIMENSIONS,
         table_name: str = TABLE_NAME,
+        create_if_missing: bool = True,
     ) -> None:
         import lancedb
 
         self._dimensions = dimensions
         self._table_name = table_name
         self._db = lancedb.connect(uri)
-        self._table = self._open_or_create_table()
+        # Read-only consumers (the query Lambda) pass create_if_missing=False so a
+        # missing table fails fast instead of attempting a write they can't perform.
+        self._table = self._open_or_create_table(create_if_missing)
 
     def _build_schema(self) -> Any:
         import pyarrow as pa
@@ -51,9 +62,14 @@ class LanceDBIndex(VectorIndex):
             ]
         )
 
-    def _open_or_create_table(self) -> Any:
+    def _open_or_create_table(self, create_if_missing: bool) -> Any:
         if self._table_name in self._db.table_names():
             return self._db.open_table(self._table_name)
+        if not create_if_missing:
+            raise VectorStoreNotFoundError(
+                f"vector store table '{self._table_name}' not found; "
+                "run the ETL backfill to populate it"
+            )
         return self._db.create_table(self._table_name, schema=self._build_schema())
 
     def upsert(self, embedded_chunks: Sequence[EmbeddedChunk]) -> None:
