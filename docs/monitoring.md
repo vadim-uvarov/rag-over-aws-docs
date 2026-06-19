@@ -69,6 +69,7 @@ set `alarm_email` (or subscribe an endpoint to the topic) to receive notificatio
 | `etl-dlq-not-empty` | A file repeatedly fails chunk/embed/index | Inspect the DLQ message + the process Lambda logs (filter by `key`). Fix the cause, then re-drive the DLQ back onto the ingest queue. |
 | `sfn-failed-executions` | Bedrock throttling or a bad batch item | Open the failed execution; check the `ProcessDocument` task error. Throttling → lower `map_max_concurrency`; bad item → fix the source doc. |
 | `api-5xx` / 504 | Query Lambda errors / timeouts / cold LanceDB | Find the **last per-stage log line** before the function stopped to localise the hang; cross-check the X-Ray subsegments. Verify the vector store exists and the index is populated (run the backfill). |
+| `503` "knowledge base is not ready yet" | Vector store not built (the read-only query role cannot create it) | Run the ETL backfill to index `corpus/raw/` into `corpus/vector-store/`. The query path is read-only by design and never creates the table. |
 | `bedrock-throttles` | Burst of requests or low quota | Reduce concurrency; request a Bedrock quota increase. |
 | Budget alarm | Bedrock spend over threshold | Review usage in Cost Explorer; tighten the per-session/daily caps. |
 | All answers are "I don't know" | Empty/missing vector store | Confirm ingestion ran and the backfill indexed `corpus/raw/` into `corpus/vector-store/`. |

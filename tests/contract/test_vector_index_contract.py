@@ -79,3 +79,27 @@ def test_delete_document_removes_chunks(index: VectorIndex) -> None:
     )
     index.delete_document("r", "drop.md")
     assert index.count() == 1
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("lancedb") is None, reason="lancedb wheel not installed"
+)
+def test_lancedb_missing_table_raises_when_not_creating(tmp_path: Path) -> None:
+    # Read-only consumers must fail fast instead of attempting a forbidden create.
+    from rag_aws.etl.indexing.lancedb_index import LanceDBIndex, VectorStoreNotFoundError
+
+    with pytest.raises(VectorStoreNotFoundError):
+        LanceDBIndex(uri=str(tmp_path / "lancedb"), dimensions=3, create_if_missing=False)
+
+
+@pytest.mark.skipif(
+    importlib.util.find_spec("lancedb") is None, reason="lancedb wheel not installed"
+)
+def test_lancedb_opens_existing_table_when_not_creating(tmp_path: Path) -> None:
+    from rag_aws.etl.indexing.lancedb_index import LanceDBIndex
+
+    uri = str(tmp_path / "lancedb")
+    LanceDBIndex(uri=uri, dimensions=3).upsert([_embedded("a", [1.0, 0.0, 0.0])])
+
+    reopened = LanceDBIndex(uri=uri, dimensions=3, create_if_missing=False)
+    assert reopened.count() == 1

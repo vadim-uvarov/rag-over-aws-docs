@@ -19,7 +19,7 @@ from botocore.config import Config
 
 from rag_aws.config.settings import VECTOR_STORE_PREFIX, load_settings
 from rag_aws.etl.embedding.bedrock import BedrockTitanEmbedder, InvokeModelClient
-from rag_aws.etl.indexing.lancedb_index import LanceDBIndex
+from rag_aws.etl.indexing.lancedb_index import LanceDBIndex, VectorStoreNotFoundError
 from rag_aws.etl.interfaces import SearchResult
 from rag_aws.observability import get_logger
 from rag_aws.query.generator import AnswerGenerator, NovaMicroModel
@@ -135,7 +135,13 @@ def handler(event: dict[str, Any], _context: object = None) -> dict[str, Any]:
         return _http_response(400, {"error": "request body must be valid JSON"})
 
     _logger.info("building dependencies")
-    deps = _build_dependencies()
+    try:
+        deps = _build_dependencies()
+    except VectorStoreNotFoundError:
+        # The vector store has not been built yet; fail fast with a clear signal
+        # instead of letting the read-only role hang on a forbidden write.
+        _logger.error("vector store not found; run the ETL backfill")
+        return _http_response(503, {"error": "knowledge base is not ready yet"})
     _logger.info("dependencies built")
 
     status, payload = process_query(body, deps)
@@ -160,7 +166,12 @@ def _build_dependencies() -> QueryDependencies:
     # cold S3 access is a prime hang suspect and the object-store layer is silent.
     vector_store_uri = f"s3://{bucket}/{VECTOR_STORE_PREFIX}"
     _logger.info("connecting vector index", extra={"uri": vector_store_uri})
-    index = LanceDBIndex(uri=vector_store_uri, dimensions=settings.embedding_dimensions)
+    # Read-only: the query role cannot write, so never attempt to create the table.
+    index = LanceDBIndex(
+        uri=vector_store_uri,
+        dimensions=settings.embedding_dimensions,
+        create_if_missing=False,
+    )
     _logger.info("vector index connected")
     retriever = Retriever(embedder, index, settings=settings)
 
