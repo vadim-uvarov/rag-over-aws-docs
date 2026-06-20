@@ -3,8 +3,8 @@
 Serves the React SPA from the project bucket's `web/` prefix through CloudFront.
 
 - **Origin Access Control (OAC)** — only this CloudFront distribution can read
-  the bucket; public access stays blocked. The storage module's KMS key allows
-  CloudFront (this account) to decrypt SSE-KMS objects.
+  the bucket; public access stays blocked. The bucket uses SSE-S3, so CloudFront
+  serves objects without any KMS decrypt grant.
 - **CloudFront distribution** — origin path `/web`, `index.html` default root,
   HTTPS redirect, default CloudFront certificate.
 - **SPA routing** — `403`/`404` are rewritten to `/index.html` (200).

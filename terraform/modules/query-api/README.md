@@ -16,9 +16,9 @@ client ─► WAF (per-IP rate) ─► API Gateway (usage plan: daily quota + th
 
 - **DynamoDB** `…-sessions` — per-session counter, `expires_at` TTL (24h).
 - **Lambda** `…-query` — container image (`backend/Dockerfile`, command
-  `rag_aws.query.handler.handler`), least-privilege IAM (read corpus, KMS
-  decrypt, Bedrock invoke on the two model ARNs + inference profiles, DynamoDB
-  update/get, read the Langfuse secret).
+  `rag_aws.query.handler.handler`), least-privilege IAM (read corpus, Bedrock
+  invoke on the two model ARNs + inference profiles, DynamoDB update/get, read
+  the Langfuse secret).
 - **API Gateway** REST `POST /ask` (Lambda proxy) + stage with throttling.
 - **Usage plan** — global daily request quota + steady/burst throttle.
 - **WAFv2** web ACL — per-IP rate-based rule, associated to the stage.

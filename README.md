@@ -12,7 +12,7 @@ tests/
   unit/  integration/  # pytest suites
 frontend/              # React SPA (build stub in PR1, full app in PR6)
 terraform/
-  modules/storage/     # project S3 bucket + KMS key
+  modules/storage/     # project S3 bucket (SSE-S3)
   modules/etl/         # ingestion ETL: SQS, Step Functions, Lambdas
   modules/query-api/   # synchronous /ask API Gateway + query Lambda
   modules/monitoring/  # dashboards, alarms, SNS topic
