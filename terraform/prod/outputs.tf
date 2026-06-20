@@ -8,11 +8,6 @@ output "bucket_arn" {
   value       = module.storage.bucket_arn
 }
 
-output "kms_key_arn" {
-  description = "ARN of the KMS key encrypting the project bucket."
-  value       = module.storage.kms_key_arn
-}
-
 output "etl_ingest_queue_url" {
   description = "ETL ingestion SQS queue URL (null when ETL is disabled)."
   value       = try(module.etl[0].ingest_queue_url, null)

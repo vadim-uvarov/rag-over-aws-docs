@@ -31,11 +31,6 @@ data "aws_iam_policy_document" "query" {
     resources = [var.bucket_arn, "${var.bucket_arn}/*"]
   }
   statement {
-    sid       = "Kms"
-    actions   = ["kms:Decrypt", "kms:GenerateDataKey"]
-    resources = [var.kms_key_arn]
-  }
-  statement {
     sid       = "Bedrock"
     actions   = ["bedrock:InvokeModel"]
     resources = local.bedrock_model_arns

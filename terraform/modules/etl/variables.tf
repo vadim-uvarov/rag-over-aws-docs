@@ -18,11 +18,6 @@ variable "bucket_arn" {
   type        = string
 }
 
-variable "kms_key_arn" {
-  description = "ARN of the KMS key encrypting the project bucket."
-  type        = string
-}
-
 variable "lambda_image_uri" {
   description = "ECR image URI for the ETL Lambdas (dispatch + process share one image)."
   type        = string

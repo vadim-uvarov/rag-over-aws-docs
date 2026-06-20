@@ -7,51 +7,6 @@ terraform {
   }
 }
 
-data "aws_caller_identity" "current" {}
-
-# Key policy: keep full account/IAM control, and let CloudFront (this account)
-# decrypt so it can serve SSE-KMS objects from web/ via OAC (frontend-hosting).
-data "aws_iam_policy_document" "kms" {
-  statement {
-    sid       = "EnableIAMUserPermissions"
-    actions   = ["kms:*"]
-    resources = ["*"]
-    principals {
-      type        = "AWS"
-      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
-    }
-  }
-
-  statement {
-    sid       = "AllowCloudFrontDecrypt"
-    actions   = ["kms:Decrypt"]
-    resources = ["*"]
-    principals {
-      type        = "Service"
-      identifiers = ["cloudfront.amazonaws.com"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "aws:SourceAccount"
-      values   = [data.aws_caller_identity.current.account_id]
-    }
-  }
-}
-
-# Customer-managed KMS key for at-rest encryption of the project bucket.
-resource "aws_kms_key" "bucket" {
-  description             = "SSE-KMS key for the rag-over-aws-docs project bucket"
-  deletion_window_in_days = 7
-  enable_key_rotation     = true
-  policy                  = data.aws_iam_policy_document.kms.json
-  tags                    = var.tags
-}
-
-resource "aws_kms_alias" "bucket" {
-  name          = "alias/${var.bucket_name}"
-  target_key_id = aws_kms_key.bucket.key_id
-}
-
 # Single project bucket. Prefix layout (see README.md):
 #   corpus/raw/ (A)  corpus/chunks/ (B)  corpus/vector-store/ (C)
 #   corpus/manifests/ (D)  web/ (frontend artifacts)
@@ -67,15 +22,14 @@ resource "aws_s3_bucket_versioning" "project" {
   }
 }
 
+# SSE-S3 (AES256): S3-managed keys, no KMS. The corpus is public AWS docs and
+# all public access is blocked, so a customer-managed key is unnecessary cost.
 resource "aws_s3_bucket_server_side_encryption_configuration" "project" {
   bucket = aws_s3_bucket.project.id
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm     = "aws:kms"
-      kms_master_key_id = aws_kms_key.bucket.arn
+      sse_algorithm = "AES256"
     }
-    # S3 Bucket Keys cut KMS request costs for high-volume access.
-    bucket_key_enabled = true
   }
 }
 

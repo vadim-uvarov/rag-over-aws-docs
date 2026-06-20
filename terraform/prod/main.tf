@@ -65,7 +65,6 @@ module "etl" {
   aws_region       = local.aws_region
   bucket_name      = module.storage.bucket_id
   bucket_arn       = module.storage.bucket_arn
-  kms_key_arn      = module.storage.kms_key_arn
   lambda_image_uri = var.etl_lambda_image_uri
   tags             = local.common_tags
 }
@@ -92,7 +91,6 @@ module "query_api" {
   aws_region       = local.aws_region
   bucket_name      = module.storage.bucket_id
   bucket_arn       = module.storage.bucket_arn
-  kms_key_arn      = module.storage.kms_key_arn
   lambda_image_uri = var.query_lambda_image_uri
   tags             = local.common_tags
 }

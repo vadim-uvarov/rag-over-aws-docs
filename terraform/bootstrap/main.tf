@@ -105,14 +105,10 @@ resource "aws_iam_role" "cicd_deploy" {
 #      back every bucket sub-resource (versioning, encryption, lifecycle, public
 #      access block, tagging, ...) on each apply, so the role needs the matching
 #      Get*/Put* actions, not just CreateBucket.
-#   3. The customer-managed KMS key that encrypts the project bucket. CreateKey
-#      and ListAliases cannot be scoped to a key ARN (the key/aliases are not
-#      addressable at create time), so KMS actions use "*"; access to existing
-#      keys is still gated by each key's own key policy.
-#   4. CloudFront distribution + origin access control for the frontend.
-#   5. ECR: token auth (must be "*") plus layer/image push and read/tag actions
+#   3. CloudFront distribution + origin access control for the frontend.
+#   4. ECR: token auth (must be "*") plus layer/image push and read/tag actions
 #      scoped to this stack's repository, so CI can build and push the image.
-#   6. The ETL, Query API and Monitoring modules in terraform/prod. Each apply
+#   5. The ETL, Query API and Monitoring modules in terraform/prod. Each apply
 #      runs a terraform refresh that reads back every attribute, so these grant
 #      full create/read/update/delete/tag on the resource types those modules
 #      manage (Lambda, IAM roles, SQS, Step Functions, EventBridge, CloudWatch
@@ -159,35 +155,8 @@ data "aws_iam_policy_document" "cicd_permissions" {
     ]
   }
 
-  statement {
-    sid    = "ProjectBucketKmsKey"
-    effect = "Allow"
-    actions = [
-      "kms:CreateKey",
-      "kms:DescribeKey",
-      "kms:ListAliases",
-      "kms:CreateAlias",
-      "kms:DeleteAlias",
-      "kms:UpdateAlias",
-      "kms:GetKeyPolicy",
-      "kms:PutKeyPolicy",
-      "kms:GetKeyRotationStatus",
-      "kms:EnableKeyRotation",
-      "kms:DisableKeyRotation",
-      "kms:ListResourceTags",
-      "kms:TagResource",
-      "kms:UntagResource",
-      "kms:ScheduleKeyDeletion",
-      "kms:CancelKeyDeletion",
-      # Data-plane actions required when reading/writing SSE-KMS encrypted objects.
-      "kms:GenerateDataKey",
-      "kms:Decrypt",
-    ]
-    resources = ["*"]
-  }
-
   # CloudFront does not support resource-level restrictions for most actions,
-  # so "*" is required (same pattern as KMS above).
+  # so "*" is required.
   statement {
     sid    = "CloudFront"
     effect = "Allow"
@@ -335,7 +304,7 @@ data "aws_iam_policy_document" "cicd_permissions" {
   }
 
   # CloudWatch alarms and dashboards do not support resource-level scoping on
-  # create, so these actions require "*" (same pattern as CloudFront/KMS above).
+  # create, so these actions require "*" (same pattern as CloudFront above).
   statement {
     sid    = "CloudWatch"
     effect = "Allow"
