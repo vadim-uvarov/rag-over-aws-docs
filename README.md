@@ -45,6 +45,7 @@ incrementally per [`.claude/initial-plan.md`](.claude/initial-plan.md).
 - [`docs/api.md`](docs/api.md) — `/ask` request/response and errors
 - [`docs/frontend.md`](docs/frontend.md) — SPA UX, run/build/deploy, tests
 - [`docs/monitoring.md`](docs/monitoring.md) — dashboards, alarms, X-Ray, runbook
+- [`docs/costs.md`](docs/costs.md) — fixed vs usage cost model and levers to cut the bill
 
 
 ## Local dev and deploy instructions
