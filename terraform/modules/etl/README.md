@@ -36,7 +36,7 @@ DLQ-not-empty and failed-execution alarms are wired in PR7.
 | Name | Description |
 |---|---|
 | `name_prefix` | Resource name prefix |
-| `bucket_name` / `bucket_arn` / `kms_key_arn` | Project bucket + its key |
+| `bucket_name` / `bucket_arn` | Project bucket |
 | `lambda_image_uri` | ECR image URI for both Lambdas |
 | `map_max_concurrency` | Concurrent processors (throttling control) |
 

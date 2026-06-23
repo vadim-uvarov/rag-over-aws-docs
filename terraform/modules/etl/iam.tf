@@ -16,7 +16,7 @@ data "aws_iam_policy_document" "lambda_assume" {
   }
 }
 
-# --- Process Lambda role: read raw, write chunks, embed, use KMS -----------
+# --- Process Lambda role: read raw, write chunks, embed --------------------
 
 resource "aws_iam_role" "process" {
   name               = "${var.name_prefix}-etl-process"
@@ -34,11 +34,6 @@ data "aws_iam_policy_document" "process" {
     sid       = "ListBucket"
     actions   = ["s3:ListBucket"]
     resources = [var.bucket_arn]
-  }
-  statement {
-    sid       = "Kms"
-    actions   = ["kms:Decrypt", "kms:GenerateDataKey"]
-    resources = [var.kms_key_arn]
   }
   statement {
     sid       = "Bedrock"

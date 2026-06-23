@@ -6,7 +6,7 @@ One-time setup of the AWS identity the CI/CD pipeline assumes. It manages:
 - the **deploy IAM role** (`rag-over-aws-docs-cicd-deploy`), trusting that provider
   and scoped to this repo's `prod` environment;
 - the role's **permissions policy** — access to the Terraform state bucket plus the
-  project bucket and KMS key that the [`prod`](../prod) stack provisions.
+  project bucket that the [`prod`](../prod) stack provisions.
 
 Keeping these in Terraform (rather than a shell script) means a permission change
 rides in the same diff as the resource that needs it: when a `prod` module starts

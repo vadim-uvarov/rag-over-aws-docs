@@ -2,9 +2,9 @@
 
 Provisions the single project S3 bucket used by the whole stack.
 
-The bucket is **versioned**, encrypted with a customer-managed **KMS** key
-(SSE-KMS, bucket keys enabled), has **all public access blocked**, and expires
-noncurrent object versions on a lifecycle rule.
+The bucket is **versioned**, encrypted at rest with **SSE-S3** (AES256,
+S3-managed keys), has **all public access blocked**, and expires noncurrent
+object versions on a lifecycle rule.
 
 ## Prefix layout
 
@@ -33,4 +33,4 @@ folders — these are key prefixes):
 |---|---|
 | `bucket_id` | Bucket name |
 | `bucket_arn` | Bucket ARN |
-| `kms_key_arn` | KMS key ARN (grant Bedrock/Lambda/CloudFront access in later PRs) |
+| `bucket_regional_domain_name` | Regional domain name (CloudFront origin) |

@@ -12,13 +12,13 @@ All figures are AWS list prices for **eu-west-1** (the region locked in
 
 ## TL;DR
 
-At 20 questions/day the bill is **~$8–10/month, almost entirely fixed
+At 20 questions/day the bill is **~$7–9/month, almost entirely fixed
 infrastructure**. Answering the questions themselves (Bedrock + Lambda +
 API Gateway) costs **under $0.20/month** — the AI workload is effectively
 free at this volume; the fixed baseline dominates.
 
 In the first 12 months the AWS Free Tier covers most of the usage line items
-and the CloudWatch alarms, so expect closer to **~$7.50/month**.
+and the CloudWatch alarms, so expect closer to **~$6.50/month**.
 
 ## Usage costs (scale with traffic)
 
@@ -48,36 +48,38 @@ These run whether or not anyone asks a question.
 | Component | Why it exists | ~Cost/month |
 |---|---|---|
 | WAF Web ACL | Per-IP rate limiting in front of the API ([`query-api/waf.tf`](../terraform/modules/query-api/waf.tf)) — $5 ACL + $1 rule | ~$6.00 |
-| KMS customer-managed key | SSE-KMS at-rest encryption of the project bucket ([`storage/main.tf`](../terraform/modules/storage/main.tf)) | ~$1.00 |
 | CloudWatch alarms | ~7 alarms: SFN failures, DLQ depth, API 5XX, Bedrock throttles, 3× Lambda errors ([`monitoring/main.tf`](../terraform/modules/monitoring/main.tf)) | ~$0.70 |
 | Secrets Manager | 1 secret holding the Langfuse keys ([`query-api/main.tf`](../terraform/modules/query-api/main.tf)) | ~$0.40 |
 | S3 storage | Corpus raw + chunks + LanceDB vector store + web build (versioned, noncurrent versions pruned) | ~$0.20 |
 | ECR | The shared Lambda container image | ~$0.10 |
 | SNS / Budgets / dashboard | Idle alert topics, 1 Bedrock budget (first 2 free), 1 dashboard (first 3 free) | ~$0 |
-| **Fixed subtotal** | | **≈ $8.40/month** |
+| **Fixed subtotal** | | **≈ $7.40/month** |
+
+> S3 at-rest encryption uses **SSE-S3 (AES256)**, which is free — there is no
+> KMS key line item (see ["At-rest encryption uses SSE-S3"](#at-rest-encryption-uses-sse-s3) below).
 
 ### WAF is the single biggest line item
 
 At ~$6/month, the WAF web ACL costs more than the entire AI workload. Dropping
 it and relying only on the API Gateway usage-plan throttle/quota plus the
-per-session DynamoDB quota for abuse control would roughly **halve the bill to
-~$2.50/month** — at the cost of losing per-IP rate limiting at the edge.
+per-session DynamoDB quota for abuse control would cut the bill to
+**~$1.50/month** — at the cost of losing per-IP rate limiting at the edge.
 
-### The KMS key is optional hardening
+### At-rest encryption uses SSE-S3
 
-S3 is always encrypted; the choice is *which* key. The stack uses a
-**customer-managed key** for rotation control, a custom key policy (it grants
-CloudFront `kms:Decrypt` to serve the SPA), and CloudTrail-audited decrypts.
-For public AWS documentation this is arguably overkill. Cheaper alternatives:
+S3 is always encrypted; the choice is *which* key. The bucket uses **SSE-S3
+(AES256, S3-managed keys)** — $0, no KMS key, no key policy, and public access
+is already blocked. Earlier the stack used a customer-managed KMS key
+(~$1/month + request charges) for rotation control, a custom key policy that
+granted CloudFront `kms:Decrypt`, and CloudTrail-audited decrypts; for a corpus
+of public AWS documentation that was overkill, so it was removed. For reference,
+the options were:
 
 | Option | Key cost | Trade-off |
 |---|---|---|
-| Customer-managed KMS key (current) | ~$1.00 + requests | Full key control, rotation, audit |
+| SSE-S3 (AES256) (current) | $0 | No KMS at all; still encrypted at rest, public access already blocked |
 | AWS-managed key (`aws/s3`) | $0 (request charges remain) | Less control, no custom policy |
-| SSE-S3 (AES256) | $0 | No KMS at all; still encrypted at rest, public access already blocked |
-
-Switching to SSE-S3 removes the key, its ~$1/month, the KMS request costs, and
-the CloudFront decrypt grant.
+| Customer-managed KMS key | ~$1.00 + requests | Full key control, rotation, audit |
 
 ## Not included here
 
@@ -95,8 +97,5 @@ the CloudFront decrypt grant.
 
 1. **Remove WAF** (~$6/month) — biggest single saving; keep the usage-plan and
    session quotas as the abuse controls.
-2. **Switch the bucket to SSE-S3** (~$1/month + KMS requests).
-3. **Trim CloudWatch alarms** to the few you'll actually act on (~$0.10 each).
-4. **Shorten log retention** (`log_retention_days`, default 14) if logs grow.
-</content>
-</invoke>
+2. **Trim CloudWatch alarms** to the few you'll actually act on (~$0.10 each).
+3. **Shorten log retention** (`log_retention_days`, default 14) if logs grow.

@@ -38,7 +38,7 @@ over the official `awsdocs` markdown corpus.
 
 ## Single S3 bucket — prefix layout
 
-One project bucket (versioned, SSE-KMS, all public access blocked):
+One project bucket (versioned, SSE-S3, all public access blocked):
 
 | Placeholder | Prefix | Contents |
 |---|---|---|
@@ -48,9 +48,9 @@ One project bucket (versioned, SSE-KMS, all public access blocked):
 | **D** | `corpus/manifests/` | Ingestion state: per-file content hashes + chunk inventory |
 | — | `web/` | Frontend build artifacts (CloudFront origin) |
 
-The bucket and its KMS key are provisioned by `terraform/modules/storage`,
-composed in `terraform/prod` alongside the `etl`, `query-api`, `frontend`, and
-`monitoring` modules.
+The bucket is provisioned by `terraform/modules/storage`, composed in
+`terraform/prod` alongside the `etl`, `query-api`, `frontend`, and `monitoring`
+modules.
 
 ## Deploy sequence
 
@@ -107,7 +107,7 @@ tests/
   unit/  integration/
 frontend/              # React SPA (stub in PR1, built in PR6)
 terraform/
-  modules/storage/     # project S3 bucket + KMS
+  modules/storage/     # project S3 bucket (SSE-S3)
   modules/etl/         # SQS, Step Functions, ingestion Lambdas
   modules/query-api/   # /ask API Gateway + query Lambda
   modules/monitoring/  # dashboards, alarms, SNS
