@@ -33,8 +33,8 @@ their source doc) and the question.
 - **Per-session quota** — DynamoDB counter, 20 questions / session, 24h TTL;
   the 21st question returns `429`. The decision is `used <= limit`
   (`evaluate_quota`).
-- **Per-IP rate**, **global daily quota**, **throttle**, and a **Bedrock budget
-  alarm** are provisioned by the `query-api` Terraform module.
+- **Global daily quota**, **throttle**, and a **Bedrock budget alarm** are
+  provisioned by the `query-api` Terraform module.
 
 ## Models & swapping
 

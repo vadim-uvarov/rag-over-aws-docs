@@ -3,12 +3,12 @@
 The synchronous RAG query backend and its abuse/cost controls.
 
 ```
-client ─► WAF (per-IP rate) ─► API Gateway (usage plan: daily quota + throttle)
-                                   └─► Query Lambda ──► DynamoDB (per-session quota)
-                                                   ├─► Bedrock Titan v2 (embed)
-                                                   ├─► LanceDB @ S3 (search)
-                                                   ├─► Bedrock Nova Micro (generate)
-                                                   └─► Secrets Manager (Langfuse keys)
+client ─► API Gateway (usage plan: daily quota + throttle)
+             └─► Query Lambda ──► DynamoDB (per-session quota)
+                             ├─► Bedrock Titan v2 (embed)
+                             ├─► LanceDB @ S3 (search)
+                             ├─► Bedrock Nova Micro (generate)
+                             └─► Secrets Manager (Langfuse keys)
    AWS Budgets (Bedrock cost) ─► SNS
 ```
 
@@ -21,7 +21,6 @@ client ─► WAF (per-IP rate) ─► API Gateway (usage plan: daily quota + th
   the Langfuse secret).
 - **API Gateway** REST `POST /ask` (Lambda proxy) + stage with throttling.
 - **Usage plan** — global daily request quota + steady/burst throttle.
-- **WAFv2** web ACL — per-IP rate-based rule, associated to the stage.
 - **Secrets Manager** — Langfuse keys (populate the value out of band).
 - **AWS Budgets** — monthly Bedrock cost budget → **SNS** (optional email sub).
 
@@ -30,7 +29,6 @@ client ─► WAF (per-IP rate) ─► API Gateway (usage plan: daily quota + th
 | Control | Mechanism |
 |---|---|
 | Per-session cap | DynamoDB counter → `429` at `session_question_limit` |
-| Per-IP rate | WAF rate-based rule |
 | Global daily cap | API Gateway usage plan quota |
 | Steady/burst rate | Usage plan + stage throttle |
 | Bedrock spend | AWS Budgets alarm → SNS |

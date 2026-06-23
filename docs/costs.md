@@ -12,13 +12,13 @@ All figures are AWS list prices for **eu-west-1** (the region locked in
 
 ## TL;DR
 
-At 20 questions/day the bill is **~$7–9/month, almost entirely fixed
+At 20 questions/day the bill is **~$1.50/month, almost entirely fixed
 infrastructure**. Answering the questions themselves (Bedrock + Lambda +
 API Gateway) costs **under $0.20/month** — the AI workload is effectively
 free at this volume; the fixed baseline dominates.
 
 In the first 12 months the AWS Free Tier covers most of the usage line items
-and the CloudWatch alarms, so expect closer to **~$6.50/month**.
+and the CloudWatch alarms, so expect closer to **~$0.70/month**.
 
 ## Usage costs (scale with traffic)
 
@@ -47,23 +47,23 @@ These run whether or not anyone asks a question.
 
 | Component | Why it exists | ~Cost/month |
 |---|---|---|
-| WAF Web ACL | Per-IP rate limiting in front of the API ([`query-api/waf.tf`](../terraform/modules/query-api/waf.tf)) — $5 ACL + $1 rule | ~$6.00 |
 | CloudWatch alarms | ~7 alarms: SFN failures, DLQ depth, API 5XX, Bedrock throttles, 3× Lambda errors ([`monitoring/main.tf`](../terraform/modules/monitoring/main.tf)) | ~$0.70 |
 | Secrets Manager | 1 secret holding the Langfuse keys ([`query-api/main.tf`](../terraform/modules/query-api/main.tf)) | ~$0.40 |
 | S3 storage | Corpus raw + chunks + LanceDB vector store + web build (versioned, noncurrent versions pruned) | ~$0.20 |
 | ECR | The shared Lambda container image | ~$0.10 |
 | SNS / Budgets / dashboard | Idle alert topics, 1 Bedrock budget (first 2 free), 1 dashboard (first 3 free) | ~$0 |
-| **Fixed subtotal** | | **≈ $7.40/month** |
+| **Fixed subtotal** | | **≈ $1.40/month** |
 
 > S3 at-rest encryption uses **SSE-S3 (AES256)**, which is free — there is no
 > KMS key line item (see ["At-rest encryption uses SSE-S3"](#at-rest-encryption-uses-sse-s3) below).
 
-### WAF is the single biggest line item
+### Abuse control without WAF
 
-At ~$6/month, the WAF web ACL costs more than the entire AI workload. Dropping
-it and relying only on the API Gateway usage-plan throttle/quota plus the
-per-session DynamoDB quota for abuse control would cut the bill to
-**~$1.50/month** — at the cost of losing per-IP rate limiting at the edge.
+There is no WAF web ACL — at ~$6/month it cost more than the entire AI workload,
+and a per-IP edge rate limit isn't worth that for a corpus of public AWS docs.
+Abuse is held back by the API Gateway usage-plan throttle/quota plus the
+per-session DynamoDB quota instead; the trade-off is no per-IP rate limiting at
+the edge.
 
 ### At-rest encryption uses SSE-S3
 
@@ -95,7 +95,6 @@ the options were:
 
 ## Levers to cut the bill
 
-1. **Remove WAF** (~$6/month) — biggest single saving; keep the usage-plan and
-   session quotas as the abuse controls.
-2. **Trim CloudWatch alarms** to the few you'll actually act on (~$0.10 each).
-3. **Shorten log retention** (`log_retention_days`, default 14) if logs grow.
+1. **Trim CloudWatch alarms** to the few you'll actually act on (~$0.10 each) —
+   the largest remaining line item now that WAF is gone.
+2. **Shorten log retention** (`log_retention_days`, default 14) if logs grow.

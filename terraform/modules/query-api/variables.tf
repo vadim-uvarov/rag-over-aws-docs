@@ -71,12 +71,6 @@ variable "throttle_burst_limit" {
   default     = 40
 }
 
-variable "waf_ip_rate_limit" {
-  description = "Max requests per IP per 5-minute window (WAF rate rule)."
-  type        = number
-  default     = 300
-}
-
 variable "bedrock_monthly_budget_usd" {
   description = "Monthly Bedrock cost budget that triggers an SNS alarm."
   type        = number
