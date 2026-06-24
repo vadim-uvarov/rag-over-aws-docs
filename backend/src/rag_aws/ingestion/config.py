@@ -35,6 +35,10 @@ CURATED_REPOS: tuple[RepoConfig, ...] = (
         doc_subdir="doc_source",
     ),
     RepoConfig("iam-user-guide", "https://github.com/awsdocs/iam-user-guide.git"),
-    RepoConfig("amazon-ec2-user-guide", "https://github.com/awsdocs/amazon-ec2-user-guide.git"),
+    RepoConfig(
+        "amazon-ec2-user-guide",
+        "https://github.com/awsdocs/amazon-ec2-user-guide.git",
+        branch="master",  # this repo predates the master→main rename
+    ),
     RepoConfig("aws-cli-user-guide", "https://github.com/awsdocs/aws-cli-user-guide.git"),
 )
