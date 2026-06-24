@@ -10,10 +10,10 @@ This runs **locally** for now (PR2). PR8 optionally moves it to a scheduled AWS 
 
 ```sh
 # Dry run (compute the plan, write nothing) against the bucket in PROJECT_BUCKET_NAME:
-PROJECT_BUCKET_NAME=<bucket> uv run python scripts/ingest_corpus.py --dry-run
+PROJECT_BUCKET_NAME=<bucket> uv run python scripts/ingestion/ingest_corpus.py --dry-run
 
 # Real sync against an explicit bucket:
-uv run python scripts/ingest_corpus.py --bucket <bucket>
+uv run python scripts/ingestion/ingest_corpus.py --bucket <bucket>
 ```
 
 Requirements: AWS credentials with read/write on the bucket, and `git` on PATH
@@ -87,4 +87,4 @@ Adding a repo only uploads its new files (the diff handles the rest).
 | `ingestion/hashing.py` | SHA-256 content hash |
 | `ingestion/manifest.py` | Manifest model + S3 read/write |
 | `ingestion/sync.py` | Pure diff planner + top-level `sync_corpus` |
-| `scripts/ingest_corpus.py` | CLI entry point |
+| `scripts/ingestion/ingest_corpus.py` | CLI entry point |

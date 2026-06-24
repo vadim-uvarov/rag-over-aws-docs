@@ -5,8 +5,8 @@ Run locally (PR2). Reads/writes the manifest at ``corpus/manifests/manifest.json
 and performs an incremental, hash-based sync into ``corpus/raw/``.
 
 Examples:
-    python scripts/ingest_corpus.py --bucket my-bucket
-    python scripts/ingest_corpus.py --dry-run            # uses PROJECT_BUCKET_NAME
+    python scripts/ingestion/ingest_corpus.py --bucket my-bucket
+    python scripts/ingestion/ingest_corpus.py --dry-run            # uses PROJECT_BUCKET_NAME
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from pathlib import Path
 
 # The package is not pip-installed (no build backend); make it importable when
 # this script is run directly.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend" / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend" / "src"))
 
 import boto3
 

@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.5"
 
   # Bootstrap state lives in the same bucket as the prod stack, under a separate
-  # key. The bucket is created out-of-band (scripts/create-tfstate-bucket-in-aws.sh)
+  # key. The bucket is created out-of-band (scripts/setup-repo-and-infra/create-tfstate-bucket-in-aws.sh)
   # because it must exist before any Terraform runs. The bucket name embeds the
   # account ID and the region mirrors local.aws_region (sourced from
   # config/deploy.json, the single source of truth for the region), so both are
@@ -48,7 +48,7 @@ locals {
     ManagedBy   = "terraform"
   }
 
-  # Bucket names must stay in sync with scripts/create-tfstate-bucket-in-aws.sh
+  # Bucket names must stay in sync with scripts/setup-repo-and-infra/create-tfstate-bucket-in-aws.sh
   # and terraform/prod (project-environment-accountid).
   tfstate_bucket = "${local.project}-tfstate-${data.aws_caller_identity.current.account_id}"
   project_bucket = "${local.project}-${local.environment}-${data.aws_caller_identity.current.account_id}"

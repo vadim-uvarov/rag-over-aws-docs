@@ -21,7 +21,7 @@ rewrite its own trust policy or permissions. Its state is stored under the
 
 ## Apply
 
-Prerequisite: the state bucket exists (`scripts/create-tfstate-bucket-in-aws.sh`).
+Prerequisite: the state bucket exists (`scripts/setup-repo-and-infra/create-tfstate-bucket-in-aws.sh`).
 
 ```sh
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
@@ -44,4 +44,4 @@ Then read the role ARN for the `prod` GitHub Environment:
 terraform -chdir=terraform/bootstrap output -raw deploy_role_arn
 ```
 
-Set it as `AWS_ROLE_ARN` (see `scripts/setup-deploy-vars-in-github.sh`).
+Set it as `AWS_ROLE_ARN` (see `scripts/setup-repo-and-infra/setup-deploy-vars-in-github.sh`).

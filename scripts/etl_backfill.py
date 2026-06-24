@@ -5,7 +5,7 @@ Use for the initial bulk load after ingesting the corpus (PR2), so existing
 objects flow through the same chunk → embed → index pipeline as live changes.
 
 Example:
-    python scripts/backfill.py --bucket my-bucket --queue-url https://sqs...
+    python scripts/etl_backfill.py --bucket my-bucket --queue-url https://sqs...
 """
 
 from __future__ import annotations

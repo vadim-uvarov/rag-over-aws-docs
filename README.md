@@ -70,7 +70,7 @@ deploy the full stack (see below).
 
 ### Github repo setup (branch protection and PR rules)
 
-Once the repo is on GitHub with a `main` branch, run `./scripts/setup-github-repo.sh` (needs
+Once the repo is on GitHub with a `main` branch, run `./scripts/setup-repo-and-infra/setup-github-repo.sh` (needs
 the `gh` CLI with admin rights). It protects `main` so it can only be updated via a pull
 request whose pipeline passes and whose conversations are all resolved.
 
@@ -79,7 +79,7 @@ request whose pipeline passes and whose conversations are all resolved.
 The `prod` stack uses an S3 backend with S3-native locking. The bucket name embeds the AWS
 account ID, so it is passed at `terraform init` time rather than hardcoded.
 
-1. Create the state bucket once per AWS account: `./scripts/create-tfstate-bucket-in-aws.sh`
+1. Create the state bucket once per AWS account: `./scripts/setup-repo-and-infra/create-tfstate-bucket-in-aws.sh`
    (it prints the bucket name).
 2. Create the GitHub OIDC provider, the deploy IAM role, and the shared `rag-aws-etl`
    ECR repository by applying the [`bootstrap`](terraform/bootstrap) stack (run once,
@@ -87,7 +87,7 @@ account ID, so it is passed at `terraform init` time rather than hardcoded.
    [`terraform/bootstrap/README.md`](terraform/bootstrap/README.md). Read the role
    ARN with `terraform -chdir=terraform/bootstrap output -raw deploy_role_arn`.
 3. Set the deploy variables on the `prod` GitHub Environment — run
-   `./scripts/setup-deploy-vars-in-github.sh` (uses the `gh` CLI and prompts for each value), or set
+   `./scripts/setup-repo-and-infra/setup-deploy-vars-in-github.sh` (uses the `gh` CLI and prompts for each value), or set
    them manually:
    - `AWS_ROLE_ARN` — the role ARN from step 2 (assumed via GitHub OIDC by `aws-actions/configure-aws-credentials`)
    - `TF_STATE_BUCKET` — the bucket name from step 1

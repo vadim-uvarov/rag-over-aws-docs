@@ -25,7 +25,7 @@ echo
 # Prompt for each value. The region is intentionally not asked for here — it
 # comes from terraform/prod/variables.tf (see the note at the top of this file).
 read -r -p "AWS_ROLE_ARN (IAM role assumed via OIDC): " AWS_ROLE_ARN
-read -r -p "TF_STATE_BUCKET (from scripts/create-tfstate-bucket-in-aws.sh): " TF_STATE_BUCKET
+read -r -p "TF_STATE_BUCKET (from scripts/setup-repo-and-infra/create-tfstate-bucket-in-aws.sh): " TF_STATE_BUCKET
 
 if [ -z "$AWS_ROLE_ARN" ] || [ -z "$TF_STATE_BUCKET" ]; then
   echo "Error: AWS_ROLE_ARN and TF_STATE_BUCKET must not be empty." >&2

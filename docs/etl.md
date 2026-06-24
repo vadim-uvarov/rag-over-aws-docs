@@ -103,7 +103,7 @@ S3 corpus/raw/ ─(EventBridge: Object Created/Deleted)─► SQS ingest (+ DLQ)
 
 ### Backfill
 
-`scripts/backfill.py --bucket <b> --queue-url <url>` enqueues an
+`scripts/etl_backfill.py --bucket <b> --queue-url <url>` enqueues an
 `Object Created` event for every object under `corpus/raw/` onto the same SQS
 buffer (batches of 10, optional `--delay`), so the initial bulk load flows
 through the identical pipeline without thousands of concurrent executions.

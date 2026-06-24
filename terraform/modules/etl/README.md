@@ -44,6 +44,6 @@ DLQ-not-empty and failed-execution alarms are wired in PR7.
 
 | Name | Description |
 |---|---|
-| `ingest_queue_url` | Backfill target (`scripts/backfill.py --queue-url`) |
+| `ingest_queue_url` | Backfill target (`scripts/etl_backfill.py --queue-url`) |
 | `state_machine_arn` | ETL state machine |
 | `dlq_arn` | Dead-letter queue |
