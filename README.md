@@ -128,7 +128,7 @@ subscription; subscribe an address there if you want alarm notifications.
 > deploy.** It creates the `rag-aws-etl` ECR repository and grants the IAM
 > permissions the prod apply depends on (ECR push, Lambda, IAM/PassRole, SQS, Step
 > Functions, EventBridge, CloudWatch Logs/alarms/dashboards, API Gateway, DynamoDB,
-> SNS, Secrets Manager, WAFv2, Budgets). If it is not applied first, the docker push
+> SNS, Secrets Manager, Budgets). If it is not applied first, the docker push
 > fails (repository missing) and `terraform apply` fails with `AccessDenied`. Apply
 > it per [`terraform/bootstrap/README.md`](terraform/bootstrap/README.md).
 

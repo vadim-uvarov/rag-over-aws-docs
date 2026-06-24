@@ -113,7 +113,7 @@ resource "aws_iam_role" "cicd_deploy" {
 #      full create/read/update/delete/tag on the resource types those modules
 #      manage (Lambda, IAM roles, SQS, Step Functions, EventBridge, CloudWatch
 #      logs/alarms/dashboards, API Gateway, DynamoDB, SNS, Secrets Manager,
-#      WAFv2, Budgets), scoped to "rag-over-aws-docs-prod-*" ARNs where the
+#      Budgets), scoped to "rag-over-aws-docs-prod-*" ARNs where the
 #      service supports resource-level permissions and to "*" where it does not.
 data "aws_iam_policy_document" "cicd_permissions" {
   statement {
@@ -351,15 +351,6 @@ data "aws_iam_policy_document" "cicd_permissions" {
     effect    = "Allow"
     actions   = ["secretsmanager:*"]
     resources = ["arn:aws:secretsmanager:${local.aws_region}:${local.account_id}:secret:${local.prod_prefix}-*"]
-  }
-
-  # WAFv2 ARNs embed generated ids and associating a Web ACL with the API Gateway
-  # stage needs broad access, so resource-level scoping is impractical here.
-  statement {
-    sid       = "WafV2"
-    effect    = "Allow"
-    actions   = ["wafv2:*"]
-    resources = ["*"]
   }
 
   # Budgets are a global service with no region segment in their ARNs.

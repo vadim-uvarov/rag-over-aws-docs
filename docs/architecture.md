@@ -27,7 +27,7 @@ over the official `awsdocs` markdown corpus.
                   ┌──────────────────────── QUERY (synchronous, PR5/PR6) ──────────┐
  CloudFront ─► S3 web/ (React SPA)
       │
-      └─► API Gateway (WAF + usage plan) ─► Query Lambda
+      └─► API Gateway (usage plan) ─► Query Lambda
                                               ├ session quota check (DynamoDB)
                                               ├ embed query (Titan v2)
                                               ├ LanceDB search: top20 → sim ≥ 0.7 → top5
